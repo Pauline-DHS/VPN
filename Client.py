@@ -1,6 +1,7 @@
 # coding: utf-8
 from ctypes import pythonapi
 from datetime import datetime
+import hashlib
 import os
 import random
 import socket
@@ -164,23 +165,31 @@ def send_mail():
         text_value = body_text.get("1.0", "end")
 
         signal = "reception msg"
-        vpn_client.send(signal.encode())
-        rep = vpn_client.recv(1024)
+        #vpn_client.send(signal.encode())
+        send_data(vpn_client,signal.encode(),key_partaged.encode())
+        #rep = vpn_client.recv(1024)
+        rep = recv_message(vpn_client,key_partaged)
         
         if (rep.decode() == "ok"):
             dest_value = encrypt(dest_value,key_partaged)
-            vpn_client.send(dest_value.encode())
-            rep = vpn_client.recv(1024)
+            #vpn_client.send(dest_value.encode())
+            send_data(vpn_client,dest_value.encode(),key_partaged.encode())
+            #rep = vpn_client.recv(1024)
+            rep = recv_message(vpn_client,key_partaged)
         
         if (rep.decode() == "ok"):
             sub_value = encrypt(sub_value,key_partaged)
-            vpn_client.send(sub_value.encode())
-            rep = vpn_client.recv(1024)
+            #vpn_client.send(sub_value.encode())
+            send_data(vpn_client,sub_value.encode(),key_partaged.encode())
+            #rep = vpn_client.recv(1024)
+            rep = recv_message(vpn_client,key_partaged)
         
         if (rep.decode() == "ok"):
             text_value = encrypt(text_value,key_partaged)
-            vpn_client.send(text_value.encode())
-            rep = vpn_client.recv(1024)
+            #vpn_client.send(text_value.encode())
+            send_data(vpn_client,text_value.encode(),key_partaged.encode())
+            #rep = vpn_client.recv(1024)
+            rep = recv_message(vpn_client,key_partaged)
         
         # Je ferme la fenetre
         window_send.destroy()
@@ -748,39 +757,49 @@ def clicked (event) :
 
         # envoyer un paquet de données au serveur
         signal = "recv msg ok"
-        vpn_client.send(signal.encode())
+        #vpn_client.send(signal.encode())
+        send_data(vpn_client,signal.encode(),key_partaged)
         
-        nb_msg = vpn_client.recv(1024)
+        #nb_msg = vpn_client.recv(1024)
+        nb_msg = recv_message(vpn_client,key_partaged)
         print("il y a ",nb_msg.decode()," msg")
         nb_msg = nb_msg.decode()
         
         if (int(nb_msg) == 0):
             signal = "no"
-            vpn_client.send(signal.encode())
+            #vpn_client.send(signal.encode())
+            send_data(vpn_client,signal.encode(),key_partaged)
         else:
             signal = "yes"
-            vpn_client.send(signal.encode())
+            #vpn_client.send(signal.encode())
+            send_data(vpn_client,signal.encode(),key_partaged)
             print("il y a des messages j'envoie signal pour les recevoirs ")
             print("J'attends le message")
             
             signal = "ok"
             for i in range(int(nb_msg)):
                 print("je suis dans le for et j'attends")
-                source = vpn_client.recv(1024)
+                #source = vpn_client.recv(1024)
+                source = recv_message(vpn_client,key_partaged)
                 print("j'ai recu")
                 source = decrypt(source.decode(),key_partaged)
                 print("Le destinataire décrypté est : ",source)
-                vpn_client.send(signal.encode())
+                #vpn_client.send(signal.encode())
+                send_data(vpn_client,signal.encode(),key_partaged)
                 
-                subject = vpn_client.recv(1024)
+                #subject = vpn_client.recv(1024)
+                subject = recv_message(vpn_client,key_partaged)
                 subject = decrypt(subject.decode(),key_partaged)
                 print("Le subject décrypté est : ",subject)
-                vpn_client.send(signal.encode())
+                #vpn_client.send(signal.encode())
+                send_data(vpn_client,signal.encode(),key_partaged)
                 
-                text = vpn_client.recv(1024)
+                #text = vpn_client.recv(1024)
+                text = recv_message(vpn_client,key_partaged)
                 text = decrypt(text.decode(),key_partaged)
                 print("Le text décrypté est : ",text)
-                vpn_client.send(signal.encode())
+                #vpn_client.send(signal.encode())
+                send_data(vpn_client,signal.encode(),key_partaged)
                 
                 cursor.execute("SELECT MAX(id) FROM email_client")
                 last_id = cursor.fetchone()[0]
@@ -822,39 +841,78 @@ def int2binary(n):
     while n != 0: n, res = n >> 1, repr(n & 1) + res
     return res  
 
-def encrypt(Messageacrypter,key):
-    lg=len(Messageacrypter)
-    MessageCrypte=""
-    for i in range(lg):
-        if Messageacrypter[i].isalpha():
-            if Messageacrypter[i].isupper():
-                if ord(Messageacrypter[i])+key > 90:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-                else:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-            else:
-                if ord(Messageacrypter[i])+key > 122:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-                elif ord(Messageacrypter[i])+key < 65:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key+26)
-                else:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-        elif Messageacrypter[i].isnumeric():
-            if ord(Messageacrypter[i])+key > 57:
-                MessageCrypte+=chr(ord(Messageacrypter[i])+key-10)
-            else:
-                MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-        else:
-            MessageCrypte += Messageacrypter[i]
-    return MessageCrypte
+from Crypto.Cipher import AES
+
+def encrypt(message,key):
+    print("key : ",key)
+    print("je suis dans la fonction pour encrypter")
+    print(key)
+    cipher = AES.new(key, AES.MODE_EAX)
+    print("test 1")
+    ciphertext, tag = cipher.encrypt_and_digest(message)
+    print("J'ai encrypter le message")
+    return (cipher.nonce, tag, ciphertext)
+
+def send_data(vpn_client,message,key):
+    print("message à envoyer : ",message)
+    nonce, tag, ciphertext = encrypt(message,key)
+    # print("taille nonce : ",len(nonce))
+    # print("taille tag : ",len(tag))
+    # print("taille ciphertext : ",len(ciphertext))
+    tuple_data = (nonce, tag, ciphertext)
+    data = b''.join(tuple_data)
+    print("nonce : ",nonce)
+    print("tag : ",tag)
+    print("ciphertext : ",ciphertext)
+    vpn_client.sendall(data)
+    
+def decrypt(key, nonce, tag, ciphertext):
+    cipher = AES.new(key, AES.MODE_EAX, nonce)
+    plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+    print("message recu : ",plaintext)
+    return plaintext
+
+def recv_message(client_connection,key):
+    data = client_connection.recv(1024)
+    nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
+    print("nonce : ",nonce)
+    print("tag : ",tag)
+    print("ciphertext : ",ciphertext)
+    return decrypt(key,nonce,tag,ciphertext)
+
+# def encrypt(Messageacrypter,key):
+#     lg=len(Messageacrypter)
+#     MessageCrypte=""
+#     for i in range(lg):
+#         if Messageacrypter[i].isalpha():
+#             if Messageacrypter[i].isupper():
+#                 if ord(Messageacrypter[i])+key > 90:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
+#                 else:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
+#             else:
+#                 if ord(Messageacrypter[i])+key > 122:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
+#                 elif ord(Messageacrypter[i])+key < 65:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key+26)
+#                 else:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
+#         elif Messageacrypter[i].isnumeric():
+#             if ord(Messageacrypter[i])+key > 57:
+#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key-10)
+#             else:
+#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key)
+#         else:
+#             MessageCrypte += Messageacrypter[i]
+#     return MessageCrypte
 
 def encryptFile(_file,_newFile,key):
     file = open(_file,"rb")
     newFile = open(_newFile,"wb")
     lignes = file.readlines()
     for ligne in lignes:
-        lineEncrypted = encrypt(ligne.decode(),key)
-        newFile.write(lineEncrypted.encode())
+        nonce, tag , lineEncrypted = encrypt(ligne,key)
+        newFile.write(lineEncrypted)
 
 def keyCalculated(client_private_key,server_public_key,p,g):
     return server_public_key ** client_private_key % p
@@ -872,10 +930,9 @@ def sendFileQuery():
 def sendFile(file):  
     global console
     global console_window
-    global mail_list
     i = 1
     signal = "send file"
-    vpn_client.send(signal.encode())
+    send_data(vpn_client,signal.encode(),key_partaged)
     add_data_upload(cursor,len(signal.encode()),now)
     
     # Définissions de la taille du fichier
@@ -885,11 +942,14 @@ def sendFile(file):
     print ("\n---> Fichier à envoyer : '" + file + "' [" + str(octets) + " Ko]")
     console.insert("end","Fichier à envoyer : " + file + " [" + str(octets) + " Ko]\n","orange")
     tmp = "NAME " + file + "OCTETS " + str(octets)
-    vpn_client.send(tmp.encode()) # Envoi du nom et de la taille du fichier
+    #vpn_client.send(tmp.encode()) # Envoi du nom et de la taille du fichier
+    send_data(vpn_client,tmp.encode(),key_partaged)
     add_data_upload(cursor,len(tmp.encode()),now) 
     while (vpn_client.connect):
         print("j'attend")
-        tmp = vpn_client.recv(1024)
+        #tmp = vpn_client.recv(1024)
+        tmp = recv_message(vpn_client,key_partaged)
+        print(tmp)
         print("j'ai reçu")
         add_data_download(cursor,len(tmp),now)
         recu = tmp.decode() 
@@ -908,8 +968,12 @@ def sendFile(file):
                     if remaining_data > 1024:
                         fich.seek(num, 0) # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
                         donnees = fich.read(1024) # Lecture du fichier en 1024 octets           
-                        vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
-                        rep=vpn_client.recv(1024)
+                        #vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
+                        send_data(vpn_client,donnees,key_partaged)
+                        print("jai encoyé un paquet")
+                        #rep=vpn_client.recv(1024)
+                        rep = recv_message(vpn_client,key_partaged)
+                        print("JE PEUX CONTINUER")
                         add_data_upload(cursor,len(donnees),now) 
                         num = num + 1024
                         remaining_data -= 1024
@@ -944,7 +1008,8 @@ def sendFile(file):
                             pourcent = 9
                     else:
                         donnees = fich.read(int(remaining_data))
-                        vpn_client.send(donnees)
+                        #vpn_client.send(donnees)
+                        send_data(vpn_client,donnees,key_partaged)
                         add_data_upload(cursor,len(donnees),now) 
                         print (" -> 100%")  
                         break
@@ -953,14 +1018,16 @@ def sendFile(file):
                         
             else: # Sinon on envoi tous d'un coup
                 donnees = fich.read()
-                vpn_client.send(donnees)
+                #vpn_client.send(donnees)
+                send_data(vpn_client,donnees,key_partaged)
                 add_data_upload(cursor,len(donnees),now) 
 
             fich.close()
             console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")
             signal2 = "BYE"
             time.sleep(1)
-            vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
+            #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
+            send_data(vpn_client,signal2.encode(),key_partaged)
             add_data_upload(cursor,len(signal2.encode()),now) 
             #print("\nsignal envoyé : ",signal2)
             return True
@@ -1143,8 +1210,11 @@ def Diffie_Hullman_Key():
     key_partaged = keyCalculated(client_private_key,server_public_key,p,g)
     #print("\nclé partagée : ",key_partaged)
     #print("\n-----> Les clés ont bien été échangées !")
-    
-    return key_partaged
+    # Génération du hachage de la clé partagée
+    h = hashlib.sha256(str(key_partaged).encode())
+    key_16 = h.hexdigest()[:16]
+
+    return key_16.encode()
 ###########################################################################################################################################
 #---------------------------------------------------------CRÉATION DE L'INTERFACE---------------------------------------------------------#
 ###########################################################################################################################################

@@ -1,4 +1,5 @@
 # Génération d'une clé de chiffrement partagée avec Diffie-Hellman
+import hashlib
 from logging import Manager
 from multiprocessing import Process
 import os
@@ -9,6 +10,8 @@ import struct
 import time
 from signal import signal, SIGPIPE, SIG_DFL
 from datetime import datetime
+from Crypto.Cipher import AES
+
 signal(SIGPIPE,SIG_DFL)
 
 #-----------------------------------FONCTIONS------------------------------------#
@@ -33,35 +36,72 @@ def int2binary(n):
     while n != 0: n, res = n >> 1, repr(n & 1) + res
     return res  
 
-def decrypt(MessageCrypte,key):
-    lg=len(MessageCrypte)
-    MessageClair=""
-    for i in range(lg):
-        if MessageCrypte[i].isalpha():
-            if MessageCrypte[i].isupper():
-                if ord(MessageCrypte[i])-key < 65:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-                else:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key)
-            else:
-                if ord(MessageCrypte[i])-key < 97:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-                elif ord(MessageCrypte[i])-key < 65:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-                else:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key)
-        elif MessageCrypte[i].isnumeric():
-            if ord(MessageCrypte[i])-key < 48:
-                MessageClair+=chr(ord(MessageCrypte[i])-key+10)
-            else:
-                MessageClair+=chr(ord(MessageCrypte[i])-key)
-        else:
-            MessageClair += MessageCrypte[i]
-    return MessageClair
+def decrypt(key, nonce, tag, ciphertext):
+    print("key : ",key)
+    cipher = AES.new(key, AES.MODE_EAX, nonce)
+    print("je vais decrypter le texte : ", ciphertext," avec le tag : ",tag)
+    print("nonce : ",nonce)
+    print("tag : ",tag)
+    print("ciphertext : ",ciphertext)
+    plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+    #print("message recu : ",plaintext)
+    return plaintext
 
+def recv_message(client_connection,key):
+    data = client_connection.recv(1024)
+    nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
+    # print("nonce : ",nonce)
+    # print("tag : ",tag)
+    # print("ciphertext : ",ciphertext)
+    return decrypt(key,nonce,tag,ciphertext)
+
+# def decrypt(MessageCrypte,key):
+#     lg=len(MessageCrypte)
+#     MessageClair=""
+#     for i in range(lg):
+#         if MessageCrypte[i].isalpha():
+#             if MessageCrypte[i].isupper():
+#                 if ord(MessageCrypte[i])-key < 65:
+#                     MessageClair+=chr(ord(MessageCrypte[i])-key+26)
+#                 else:
+#                     MessageClair+=chr(ord(MessageCrypte[i])-key)
+#             else:
+#                 if ord(MessageCrypte[i])-key < 97:
+#                     MessageClair+=chr(ord(MessageCrypte[i])-key+26)
+#                 elif ord(MessageCrypte[i])-key < 65:
+#                     MessageClair+=chr(ord(MessageCrypte[i])-key+26)
+#                 else:
+#                     MessageClair+=chr(ord(MessageCrypte[i])-key)
+#         elif MessageCrypte[i].isnumeric():
+#             if ord(MessageCrypte[i])-key < 48:
+#                 MessageClair+=chr(ord(MessageCrypte[i])-key+10)
+#             else:
+#                 MessageClair+=chr(ord(MessageCrypte[i])-key)
+#         else:
+#             MessageClair += MessageCrypte[i]
+#     return MessageClair
+
+def encrypt(message,key):
+    print("je suis dans la fonction pour encrypter")
+    print(key)
+    cipher = AES.new(key, AES.MODE_EAX)
+    print("test 1")
+    ciphertext, tag = cipher.encrypt_and_digest(message)
+    print("J'ai encrypter le message")
+    return (cipher.nonce, tag, ciphertext)
+
+def send_data(vpn_client,message,key):
+    print("message à envoyer : ",message)
+    nonce, tag, ciphertext = encrypt(message,key)
+    # print("taille nonce : ",len(nonce))
+    # print("taille tag : ",len(tag))
+    # print("taille ciphertext : ",len(ciphertext))
+    tuple_data = (nonce, tag, ciphertext)
+    data = b''.join(tuple_data)
+    print(data)
+    vpn_client.sendall(data)
 
 def decryptFile(_file,_newFile,key):
-    #print(type(file))
     file = open(_file,"rb")
     newFile = open(_newFile,"wb")
     lignes = file.readlines()
@@ -69,7 +109,7 @@ def decryptFile(_file,_newFile,key):
     for ligne in lignes:
         lineEncrypted = decrypt(ligne.decode(),key)
         #print("ligne encrypté: ",lineEncrypted)
-        newFile.write(lineEncrypted.encode())
+        newFile.write(lineEncrypted)
         
 def keyCalculated(server_private_key,client_public_key,p,g):
     return client_public_key ** server_private_key % p
@@ -81,10 +121,8 @@ def ReceptionFile(key_partaged):
     pourcent = 0
     while (client_connection.connect):
         recu = ""
-        recu = client_connection.recv(1024)     
-       
-        #SomDownload = addDataLenght(recu,SomDownload)
-        #print("recu decodé : ",recu.decode())
+        #recu = client_connection.recv(1024)     
+        recu = recv_message(client_connection,key_partaged)
         if not recu : return False
         
         if accepte == "non": # Condition si on a pas deja envoyer le nom et la taille du fichier
@@ -98,7 +136,8 @@ def ReceptionFile(key_partaged):
 
                 if accepte == "o" or accepte == "oui": # Si oui en lenvoi au client et on cree le fichier
                     signal = "GO"
-                    client_connection.send(signal.encode())
+                    #client_connection.send(signal.encode())
+                    send_data(client_connection,signal.encode(),key_partaged)
                     #SomUpload = addDataLenght(recu,SomUpload)
                     print (time.strftime("\n---> [%H:%M] réception du fichier en cours veuillez patienter..."))
                     f = open("RECU.txt", "wb")
@@ -107,8 +146,9 @@ def ReceptionFile(key_partaged):
                                         
                 else :
                     signal = "Bye"
-                    client_connection.send(signal.encode()) # Si pas accepte on ferme le programme
-                    #SomUpload = addDataLenght(recu,SomUpload)
+                    #client_connection.send(signal.encode()) # Si pas accepte on ferme le programme
+                    send_data(client_connection,signal.encode(),key_partaged)
+                    # SomUpload = addDataLenght(recu,SomUpload)
                     return False
 
         elif recu.decode() == "BYE": # Si on a recu "BYE" le transfer est termine
@@ -120,8 +160,8 @@ def ReceptionFile(key_partaged):
             f.write(recu)
             print(recu)
             signal="ok"
-            client_connection.send(signal.encode())
-            
+            #client_connection.send(signal.encode())
+            send_data(client_connection,signal.encode(),key_partaged)
             if taille > 1024: # Si la taille est plus grande que 1024 on s'occupe du %
 
                 # Condition pour afficher le % du transfert :
@@ -261,33 +301,37 @@ def DiffieHullamKeyExchange(client_connection):
     #print_hashmap(my_hashmap)
     print("\n-----> Les clés ont bien été échangées et stockées !")
     
-    return key_partaged
+    h = hashlib.sha256(str(key_partaged).encode())
+    key_16 = h.hexdigest()[:16]
+
     
-def encrypt(Messageacrypter,key):
-    lg=len(Messageacrypter)
-    MessageCrypte=""
-    for i in range(lg):
-        if Messageacrypter[i].isalpha():
-            if Messageacrypter[i].isupper():
-                if ord(Messageacrypter[i])+key > 90:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-                else:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-            else:
-                if ord(Messageacrypter[i])+key > 122:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-                elif ord(Messageacrypter[i])+key < 65:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key+26)
-                else:
-                    MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-        elif Messageacrypter[i].isnumeric():
-            if ord(Messageacrypter[i])+key > 57:
-                MessageCrypte+=chr(ord(Messageacrypter[i])+key-10)
-            else:
-                MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-        else:
-            MessageCrypte += Messageacrypter[i]
-    return MessageCrypte
+    return key_16.encode()
+    
+# def encrypt(Messageacrypter,key):
+#     lg=len(Messageacrypter)
+#     MessageCrypte=""
+#     for i in range(lg):
+#         if Messageacrypter[i].isalpha():
+#             if Messageacrypter[i].isupper():
+#                 if ord(Messageacrypter[i])+key > 90:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
+#                 else:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
+#             else:
+#                 if ord(Messageacrypter[i])+key > 122:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
+#                 elif ord(Messageacrypter[i])+key < 65:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key+26)
+#                 else:
+#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
+#         elif Messageacrypter[i].isnumeric():
+#             if ord(Messageacrypter[i])+key > 57:
+#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key-10)
+#             else:
+#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key)
+#         else:
+#             MessageCrypte += Messageacrypter[i]
+#     return MessageCrypte
 
 #-----------------------------------MÉTHODE RUN DES SOUS-PROCESSUS CLIENTS------------------------------------#
 
@@ -320,7 +364,8 @@ def client_handler(client_connection):
     # Echange des clés de Diffie-Hullman
     key_partaged = DiffieHullamKeyExchange(client_connection)
     while (client_connection.fileno() != -1):
-        recu = client_connection.recv(1024)
+        #recu = client_connection.recv(1024)
+        recu = recv_message(client_connection,key_partaged)
         #print(recu)
         if (recu.decode() == "send file"):
             rep= ReceptionFile(key_partaged)
@@ -392,9 +437,11 @@ def client_handler(client_connection):
             
             # j'envoie le nombre de msg en attente (peut-être à zéro)
             nb_msg = str(result[0])
-            client_connection.send(nb_msg.encode())
+            #client_connection.send(nb_msg.encode())
+            send_data(client_connection,nb_msg.encode(),key_partaged)
             
-            rep = client_connection.recv(1024)
+            #rep = client_connection.recv(1024)
+            rep = recv_message(client_connection,key_partaged)
             
             if rep.decode() == "yes":
                 c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
@@ -410,22 +457,28 @@ def client_handler(client_connection):
                     c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
                     conn.commit()
                     
-                    client_connection.send(source.encode())
+                    #client_connection.send(source.encode())
+                    send_data(client_connection,source.encode(),key_partaged)
                     print("j'ai envoyé la source")
                     print("j'attends signal")
-                    rep = client_connection.recv(1024)
+                    #rep = client_connection.recv(1024)
+                    rep = recv_message(client_connection,key_partaged)
                     
                     if (rep.decode() == "ok"):
                         print("j'ai recu le signal")
-                        client_connection.send(subject.encode())
+                        #client_connection.send(subject.encode())
+                        send_data(client_connection,subject.encode(),key_partaged)
                         print("j'ai envoyé")
-                        rep = client_connection.recv(1024)
+                        #rep = client_connection.recv(1024)
+                        rep = recv_message(client_connection,key_partaged)
                     
                     if (rep.decode() == "ok"):
                         print("j'ai recu le signal")
-                        client_connection.send(text.encode())
+                        send_data(client_connection,text.encode(),key_partaged)
+                        #client_connection.send(text.encode())
                         print("j'ai envoyé")
-                        rep = client_connection.recv(1024)
+                        #rep = client_connection.recv(1024)
+                        rep = recv_message(client_connection,key_partaged)
                 
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
