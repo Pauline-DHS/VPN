@@ -12,7 +12,7 @@ from datetime import datetime
 signal(SIGPIPE,SIG_DFL)
 
 #-----------------------------------FONCTIONS------------------------------------#
-
+#j'ai mis un commentaire
 def binary2int(binary):
     if binary.isnumeric():
         binary = int(binary)
