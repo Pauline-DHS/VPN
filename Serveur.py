@@ -3,6 +3,7 @@ import hashlib
 from logging import Manager
 from multiprocessing import Process
 import os
+import pickle
 import random
 import socket
 import sqlite3
@@ -29,65 +30,21 @@ def binary2int(binary):
         return int_val
 
 def int2binary(n):
-    "Convertit un nombre en binaire"
+   # "Convertit un nombre en binaire"
     if n == 0: 
         return '0'
     res = ''
     while n != 0: n, res = n >> 1, repr(n & 1) + res
     return res  
 
-def decrypt(key, nonce, tag, ciphertext):
-    print("key : ",key)
-    cipher = AES.new(key, AES.MODE_EAX, nonce)
-    print("je vais decrypter le texte : ", ciphertext," avec le tag : ",tag)
-    print("nonce : ",nonce)
-    print("tag : ",tag)
-    print("ciphertext : ",ciphertext)
-    plaintext = cipher.decrypt_and_verify(ciphertext, tag)
-    #print("message recu : ",plaintext)
-    return plaintext
-
-def recv_message(client_connection,key):
-    data = client_connection.recv(1024)
-    nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
-    # print("nonce : ",nonce)
-    # print("tag : ",tag)
-    # print("ciphertext : ",ciphertext)
-    return decrypt(key,nonce,tag,ciphertext)
-
-# def decrypt(MessageCrypte,key):
-#     lg=len(MessageCrypte)
-#     MessageClair=""
-#     for i in range(lg):
-#         if MessageCrypte[i].isalpha():
-#             if MessageCrypte[i].isupper():
-#                 if ord(MessageCrypte[i])-key < 65:
-#                     MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-#                 else:
-#                     MessageClair+=chr(ord(MessageCrypte[i])-key)
-#             else:
-#                 if ord(MessageCrypte[i])-key < 97:
-#                     MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-#                 elif ord(MessageCrypte[i])-key < 65:
-#                     MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-#                 else:
-#                     MessageClair+=chr(ord(MessageCrypte[i])-key)
-#         elif MessageCrypte[i].isnumeric():
-#             if ord(MessageCrypte[i])-key < 48:
-#                 MessageClair+=chr(ord(MessageCrypte[i])-key+10)
-#             else:
-#                 MessageClair+=chr(ord(MessageCrypte[i])-key)
-#         else:
-#             MessageClair += MessageCrypte[i]
-#     return MessageClair
-
 def encrypt(message,key):
-    print("je suis dans la fonction pour encrypter")
-    print(key)
+    #print("key : ",key)
+    #print("je suis dans la fonction pour encrypter")
+    #print(key)
     cipher = AES.new(key, AES.MODE_EAX)
-    print("test 1")
+    #print("test 1")
     ciphertext, tag = cipher.encrypt_and_digest(message)
-    print("J'ai encrypter le message")
+    #print("J'ai encrypter le message")
     return (cipher.nonce, tag, ciphertext)
 
 def send_data(vpn_client,message,key):
@@ -96,10 +53,45 @@ def send_data(vpn_client,message,key):
     # print("taille nonce : ",len(nonce))
     # print("taille tag : ",len(tag))
     # print("taille ciphertext : ",len(ciphertext))
-    tuple_data = (nonce, tag, ciphertext)
-    data = b''.join(tuple_data)
-    print(data)
-    vpn_client.sendall(data)
+    
+    # je stocke les données à envoyer dans un objet pour facilité l'échange
+    data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext}
+    
+    # Je serialize l'objet avant de l'envoyer 
+    data_serialized_obj = pickle.dumps(data_obj)
+    
+    # print("nonce : ",nonce)
+    # print("tag : ",tag)
+    # print("ciphertext : ",ciphertext)
+    vpn_client.sendall(data_serialized_obj)
+    
+def decrypt(key, nonce, tag, ciphertext):
+    cipher = AES.new(key, AES.MODE_EAX, nonce)
+    print("nonce : ",nonce)
+    print("tag : ",tag)
+    msg = cipher.decrypt_and_verify(ciphertext, tag)
+
+    print("LE MESSAGE RECU EST : ",msg)
+    return msg
+
+def recv_message(client_connection,key):
+    
+    data_obj = client_connection.recv(1024)
+
+    print(data_obj)
+    print("TAILLE: ",len(data_obj))
+    data_obj_deserialized = pickle.loads(data_obj)
+    
+    # Récupérer les données dans différentes variables
+    nonce = data_obj_deserialized["nonce"]
+    tag = data_obj_deserialized["tag"]
+    msg = data_obj_deserialized["msg"]
+    #nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
+    # print("nonce : ",nonce)
+    # print("tag : ",tag)
+    # print("ciphertext : ",ciphertext)
+    
+    return decrypt(key,nonce,tag,msg)
 
 def decryptFile(_file,_newFile,key):
     file = open(_file,"rb")
@@ -157,11 +149,13 @@ def ReceptionFile(key_partaged):
             print (time.strftime("\n---> Le %d/%m a %H:%M réception du fichier termine !"))
             break
         else: # Sinon on ecrit au fur et a mesure dans le fichier
+            print("j'ai recu le paquet je vais l'archiver")
             f.write(recu)
             print(recu)
             signal="ok"
             #client_connection.send(signal.encode())
             send_data(client_connection,signal.encode(),key_partaged)
+            print("J'AI BIEN RECU LE PAQUET")
             if taille > 1024: # Si la taille est plus grande que 1024 on s'occupe du %
 
                 # Condition pour afficher le % du transfert :
@@ -196,7 +190,7 @@ def ReceptionFile(key_partaged):
                 num = num + 1024
     
     
-    decryptFile("RECU.txt","Serveur_RECU.txt",key_partaged)
+    #decryptFile("RECU.txt","Serveur_RECU.txt",key_partaged)
     
     return True
     
@@ -428,57 +422,58 @@ def client_handler(client_connection):
         # Y A UN PB POUR LES VERIF DU TUPLE DANS LA LISTE 
         ###################################################################### 
         if recu.decode() == "recv msg ok":
-            print("je regarde dans l'archive si j'ai des msg --> \n")
+            pass
+            # print("je regarde dans l'archive si j'ai des msg --> \n")
             
-            c.execute("SELECT COUNT(*) FROM emails WHERE connection_ip = ? and recu = ?", (client_address[0],False))
-            result = c.fetchone()
+            # c.execute("SELECT COUNT(*) FROM emails WHERE connection_ip = ? and recu = ?", (client_address[0],False))
+            # result = c.fetchone()
 
-            print("Number de message à envoyer au client:", result[0])
+            # print("Number de message à envoyer au client:", result[0])
             
-            # j'envoie le nombre de msg en attente (peut-être à zéro)
-            nb_msg = str(result[0])
-            #client_connection.send(nb_msg.encode())
-            send_data(client_connection,nb_msg.encode(),key_partaged)
+            # # j'envoie le nombre de msg en attente (peut-être à zéro)
+            # nb_msg = str(result[0])
+            # #client_connection.send(nb_msg.encode())
+            # send_data(client_connection,nb_msg.encode(),key_partaged)
             
-            #rep = client_connection.recv(1024)
-            rep = recv_message(client_connection,key_partaged)
+            # #rep = client_connection.recv(1024)
+            # rep = recv_message(client_connection,key_partaged)
             
-            if rep.decode() == "yes":
-                c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
-                rows = c.fetchall()
+            # if rep.decode() == "yes":
+            #     c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
+            #     rows = c.fetchall()
                 
-                for row in rows:
-                    print(row)
+            #     for row in rows:
+            #         print(row)
                     
-                    source = encrypt(row[2],key_partaged)
-                    subject = encrypt(row[3],key_partaged)
-                    text = encrypt(row[4],key_partaged)
+            #         source = encrypt(row[2],key_partaged)
+            #         subject = encrypt(row[3],key_partaged)
+            #         text = encrypt(row[4],key_partaged)
                     
-                    c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
-                    conn.commit()
+            #         c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
+            #         conn.commit()
                     
-                    #client_connection.send(source.encode())
-                    send_data(client_connection,source.encode(),key_partaged)
-                    print("j'ai envoyé la source")
-                    print("j'attends signal")
-                    #rep = client_connection.recv(1024)
-                    rep = recv_message(client_connection,key_partaged)
+            #         #client_connection.send(source.encode())
+            #         send_data(client_connection,source.encode(),key_partaged)
+            #         print("j'ai envoyé la source")
+            #         print("j'attends signal")
+            #         #rep = client_connection.recv(1024)
+            #         rep = recv_message(client_connection,key_partaged)
                     
-                    if (rep.decode() == "ok"):
-                        print("j'ai recu le signal")
-                        #client_connection.send(subject.encode())
-                        send_data(client_connection,subject.encode(),key_partaged)
-                        print("j'ai envoyé")
-                        #rep = client_connection.recv(1024)
-                        rep = recv_message(client_connection,key_partaged)
+            #         if (rep.decode() == "ok"):
+            #             print("j'ai recu le signal")
+            #             #client_connection.send(subject.encode())
+            #             send_data(client_connection,subject.encode(),key_partaged)
+            #             print("j'ai envoyé")
+            #             #rep = client_connection.recv(1024)
+            #             rep = recv_message(client_connection,key_partaged)
                     
-                    if (rep.decode() == "ok"):
-                        print("j'ai recu le signal")
-                        send_data(client_connection,text.encode(),key_partaged)
-                        #client_connection.send(text.encode())
-                        print("j'ai envoyé")
-                        #rep = client_connection.recv(1024)
-                        rep = recv_message(client_connection,key_partaged)
+            #         if (rep.decode() == "ok"):
+            #             print("j'ai recu le signal")
+            #             send_data(client_connection,text.encode(),key_partaged)
+            #             #client_connection.send(text.encode())
+            #             print("j'ai envoyé")
+            #             #rep = client_connection.recv(1024)
+            #             rep = recv_message(client_connection,key_partaged)
                 
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
