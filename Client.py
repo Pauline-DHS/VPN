@@ -865,11 +865,12 @@ def send_data(vpn_client,message,key):
     data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext}
     
     # Je serialize l'objet avant de l'envoyer 
-    data_serialized_obj = pickle.dumps(data_obj)
+    data_serialized_obj = pickle.dumps(data_obj,protocol=4)
     
     print("nonce : ",nonce)
     print("tag : ",tag)
     print("ciphertext : ",ciphertext)
+    print("TAILLE : ",len(data_serialized_obj))
     vpn_client.sendall(data_serialized_obj)
     
 def decrypt(key, nonce, tag, ciphertext):
@@ -984,7 +985,7 @@ def sendFile(file):
                     if remaining_data > 1024:
                         print("test 4")
                         fich.seek(num, 0) # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
-                        donnees = fich.read(1024) # Lecture du fichier en 1024 octets    
+                        donnees = fich.read(944) # Lecture du fichier en 1024 octets    
                         print("Donné à envoyé : ",donnees)       
                         #vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
                         send_data(vpn_client,donnees,key_partaged)

@@ -58,7 +58,7 @@ def send_data(vpn_client,message,key):
     data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext}
     
     # Je serialize l'objet avant de l'envoyer 
-    data_serialized_obj = pickle.dumps(data_obj)
+    data_serialized_obj = pickle.dumps(data_obj,protocol=4)
     
     # print("nonce : ",nonce)
     # print("tag : ",tag)
