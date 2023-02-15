@@ -855,7 +855,7 @@ def encrypt(message,key):
     return (cipher.nonce, tag, ciphertext)
 
 def send_data(vpn_client,message,key):
-    print("message à envoyer : ",message)
+    # print("message à envoyer : ",message)
     nonce, tag, ciphertext = encrypt(message,key)
     # print("taille nonce : ",len(nonce))
     # print("taille tag : ",len(tag))
@@ -951,7 +951,7 @@ def sendFile(file):
     add_data_upload(cursor,len(signal.encode()),now)
     
     # Définissions de la taille du fichier
-    octets = os.path.getsize(file) / 1024
+    octets = os.path.getsize(file) / 944
 
     # Vérifiaction des informations
     print ("\n---> Fichier à envoyer : '" + file + "' [" + str(octets) + " Ko]")
@@ -975,27 +975,29 @@ def sendFile(file):
             print("test 1")
             num = 0
             pourcent = 0
-            octets = octets * 1024 # Reconverti en octets
+            octets = octets * 944 # Reconverti en octets
             fich = open(file, "rb")
             remaining_data = octets
-            if octets > 1024:	# Si le fichier est plus lourd que 1024 on l'envoi par paquet
+            if octets > 944:	# Si le fichier est plus lourd que 1024 on l'envoi par paquet
                 print("test 2")
-                for i in range(int(octets / 1024)+1):       
+                for i in range(int(octets / 944)+1):       
                     print("test 3") 
-                    if remaining_data > 1024:
+                    if remaining_data > 944:
                         print("test 4")
                         fich.seek(num, 0) # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
                         donnees = fich.read(944) # Lecture du fichier en 1024 octets    
                         print("Donné à envoyé : ",donnees)       
                         #vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
+                        #encoded_message = donnees.encode('utf-16-le')
                         send_data(vpn_client,donnees,key_partaged)
+                        
                         print("jai encoyé un paquet")
                         #rep=vpn_client.recv(1024)
                         rep = recv_message(vpn_client,key_partaged)
                         print("JE PEUX CONTINUER")
                         add_data_upload(cursor,len(donnees),now) 
-                        num = num + 1024
-                        remaining_data -= 1024
+                        num = num + 944
+                        remaining_data -= 944
                 
                         # Condition pour afficher le % du transfert (pas trouve mieu) :
                         if pourcent == 0 and num > octets / 100 * 10 and num < octets / 100 * 20:
@@ -1028,9 +1030,16 @@ def sendFile(file):
                     else:
                         print("test 5")
                         donnees = fich.read(int(remaining_data))
+                        if len(donnees) < 944:
+                            padding = b'\x00' * (944 - len(donnees))
+                            donnees += padding
                         #vpn_client.send(donnees)
                         print("Donné à envoyé en une fois: ",donnees)   
                         send_data(vpn_client,donnees,key_partaged)
+                        print("jai encoyé un paquet")
+                        #rep=vpn_client.recv(1024)
+                        rep = recv_message(vpn_client,key_partaged)
+                        print("JE PEUX CONTINUER")
                         add_data_upload(cursor,len(donnees),now) 
                         print (" -> 100%")  
                         break  
@@ -1038,6 +1047,9 @@ def sendFile(file):
             else: # Sinon on envoi tous d'un coup
                 print("test 6")
                 donnees = fich.read()
+                if len(donnees) < 944:
+                            padding = b'\x00' * (944 - len(donnees))
+                            donnees += padding
                 #vpn_client.send(donnees)
                 print("Donné à envoyé en une fois: ",donnees)
                 send_data(vpn_client,donnees,key_partaged)
@@ -1048,7 +1060,7 @@ def sendFile(file):
             signal2 = "BYE"
             time.sleep(1)
             #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
-            send_data(vpn_client,signal2.encode(),key_partaged)
+            send_data(vpn_client,signal2.encode('utf-16'),key_partaged)
             add_data_upload(cursor,len(signal2.encode()),now) 
             #print("\nsignal envoyé : ",signal2)
             return True

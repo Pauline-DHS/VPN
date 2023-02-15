@@ -80,6 +80,11 @@ def recv_message(client_connection,key):
 
     print(data_obj)
     print("TAILLE: ",len(data_obj))
+    
+    
+
+    print("TAILLE: ",len(data_obj))
+    
     data_obj_deserialized = pickle.loads(data_obj)
     
     # Récupérer les données dans différentes variables
@@ -115,6 +120,7 @@ def ReceptionFile(key_partaged):
         recu = ""
         #recu = client_connection.recv(1024)     
         recu = recv_message(client_connection,key_partaged)
+        print(recu)
         if not recu : return False
         
         if accepte == "non": # Condition si on a pas deja envoyer le nom et la taille du fichier
@@ -143,8 +149,9 @@ def ReceptionFile(key_partaged):
                     # SomUpload = addDataLenght(recu,SomUpload)
                     return False
 
-        elif recu.decode() == "BYE": # Si on a recu "BYE" le transfer est termine
-            print (" -> 100%" )
+        elif recu.decode('utf-16') == "BYE": # Si on a recu "BYE" le transfer est termine
+
+            print (" -> 100%" ) 
             f.close()
             print (time.strftime("\n---> Le %d/%m a %H:%M réception du fichier termine !"))
             break
@@ -154,6 +161,7 @@ def ReceptionFile(key_partaged):
             print(recu)
             signal="ok"
             #client_connection.send(signal.encode())
+            
             send_data(client_connection,signal.encode(),key_partaged)
             print("J'AI BIEN RECU LE PAQUET")
             if taille > 1024: # Si la taille est plus grande que 1024 on s'occupe du %
