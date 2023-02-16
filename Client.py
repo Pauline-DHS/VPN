@@ -1644,8 +1644,8 @@ dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
 #----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
 ###########################################################################################################################################
 # Paramètres de connexion
-host = '192.168.1.5'
-port = 24081
+host = '31.33.237.105'
+port = 16387
 
 # Création du socket client
 vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
