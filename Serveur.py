@@ -48,7 +48,7 @@ def encrypt(message,key):
     return (cipher.nonce, tag, ciphertext)
 
 def send_data(vpn_client,message,key):
-    print("message à envoyer : ",message)
+    #print("message à envoyer : ",message)
     nonce, tag, ciphertext = encrypt(message,key)
     # print("taille nonce : ",len(nonce))
     # print("taille tag : ",len(tag))
@@ -67,8 +67,8 @@ def send_data(vpn_client,message,key):
     
 def decrypt(key, nonce, tag, ciphertext):
     cipher = AES.new(key, AES.MODE_EAX, nonce)
-    print("nonce : ",nonce)
-    print("tag : ",tag)
+    # print("nonce : ",nonce)
+    # print("tag : ",tag)
     msg = cipher.decrypt_and_verify(ciphertext, tag)
 
     print("LE MESSAGE RECU EST : ",msg)
@@ -78,12 +78,8 @@ def recv_message(client_connection,key):
     
     data_obj = client_connection.recv(1024)
 
-    print(data_obj)
-    print("TAILLE: ",len(data_obj))
-    
-    
-
-    print("TAILLE: ",len(data_obj))
+    print("OBJET À DESERIALIZER : ",data_obj)
+    # print("TAILLE: ",len(data_obj))
     
     data_obj_deserialized = pickle.loads(data_obj)
     
@@ -98,15 +94,15 @@ def recv_message(client_connection,key):
     
     return decrypt(key,nonce,tag,msg)
 
-def decryptFile(_file,_newFile,key):
-    file = open(_file,"rb")
-    newFile = open(_newFile,"wb")
-    lignes = file.readlines()
-    #print("lignes: ",lignes)
-    for ligne in lignes:
-        lineEncrypted = decrypt(ligne.decode(),key)
-        #print("ligne encrypté: ",lineEncrypted)
-        newFile.write(lineEncrypted)
+# def decryptFile(_file,_newFile,key):
+#     file = open(_file,"rb")
+#     newFile = open(_newFile,"wb")
+#     lignes = file.readlines()
+#     #print("lignes: ",lignes)
+#     for ligne in lignes:
+#         lineEncrypted = decrypt(ligne.decode(),key)
+#         #print("ligne encrypté: ",lineEncrypted)
+#         newFile.write(lineEncrypted)
         
 def keyCalculated(server_private_key,client_public_key,p,g):
     return client_public_key ** server_private_key % p
@@ -368,7 +364,7 @@ def client_handler(client_connection):
     while (client_connection.fileno() != -1):
         #recu = client_connection.recv(1024)
         recu = recv_message(client_connection,key_partaged)
-        #print(recu)
+        print(recu)
         if (recu.decode() == "send file"):
             rep= ReceptionFile(key_partaged)
             if rep == False:
@@ -379,45 +375,54 @@ def client_handler(client_connection):
         if (recu.decode() == "speedtest upload"):
             print("Début speedtest")
             signal = "GO"
-            client_connection.send(signal.encode())
+            send_data(client_connection,signal.encode(),key_partaged)
+            #client_connection.send(signal.encode())
             print("j'ai envoyé go")
             for i in range(10):
                 if recu.decode() == "quit":
                     break
                 signal = "OK"
-                data = client_connection.recv(1024)
-                client_connection.send(signal.encode())
+                #data = client_connection.recv(1024)
+                data = recv_message(client_connection,key_partaged)
+                #client_connection.send(signal.encode())
+                send_data(client_connection,signal.encode(),key_partaged)
             
         if (recu.decode() == "speedtest download"):
             file = open("sauvegarde.txt","rb")
             for i in range(10):
-                donnees = file.read(1024) # Lecture du fichier en 1024 octets           
-                client_connection.send(donnees) 
-                recu = client_connection.recv(50)
+                donnees = file.read(944) # Lecture du fichier en 1024 octets           
+                #client_connection.send(donnees) 
+                send_data(client_connection,donnees,key_partaged)
+                recu = recv_message(client_connection,key_partaged)
         if (recu.decode() == "trafic"):
             print("")
         if (recu.decode() == "reception msg"):
             print("---------> Je vais recevoir un mail \n")
             signal = "ok"
-            client_connection.send(signal.encode())
+            send_data(client_connection,signal.encode(),key_partaged)
+            #client_connection.send(signal.encode())
             
-            destinataire = client_connection.recv(1024)
+            destinataire = recv_message(client_connection,key_partaged)
+            
             #print("Le destinataire crypté est : ",destinataire.decode())
-            destinataire = decrypt(destinataire.decode(),key_partaged)
+            #destinataire = decrypt(destinataire.decode(),key_partaged)
             print("Le destinataire décrypté est : ",destinataire)
-            client_connection.send(signal.encode())
+            #client_connection.send(signal.encode())
+            send_data(client_connection,signal.encode(),key_partaged)
             
-            subject = client_connection.recv(1024)
+            subject = recv_message(client_connection,key_partaged)
             #print("Le sujet est : ",subject.decode())
-            subject = decrypt(subject.decode(),key_partaged)
+            #subject = decrypt(subject.decode(),key_partaged)
             print("Le subject décrypté est : ",subject)
-            client_connection.send(signal.encode())
+            #client_connection.send(signal.encode())
+            send_data(client_connection,signal.encode(),key_partaged)
             
-            text = client_connection.recv(1024)
+            text = recv_message(client_connection,key_partaged)
             #print("Le text est : ",text.decode())
-            text = decrypt(text.decode(),key_partaged)
-            print("Le text décrypté est : ",text)
-            client_connection.send(signal.encode())
+            #text = decrypt(text.decode(),key_partaged)
+            #print("Le text décrypté est : ",text)
+            #client_connection.send(signal.encode())
+            send_data(client_connection,signal.encode(),key_partaged)
             
             print("--------------------> J'AI TROUVÉ LE CLIENT DANS LE FICHIER !!!")
             print("J'ai archiver le mail dans la BDD -----> \n")
@@ -431,57 +436,57 @@ def client_handler(client_connection):
         ###################################################################### 
         if recu.decode() == "recv msg ok":
             pass
-            # print("je regarde dans l'archive si j'ai des msg --> \n")
+            print("je regarde dans l'archive si j'ai des msg --> \n")
             
-            # c.execute("SELECT COUNT(*) FROM emails WHERE connection_ip = ? and recu = ?", (client_address[0],False))
-            # result = c.fetchone()
+            c.execute("SELECT COUNT(*) FROM emails WHERE connection_ip = ? and recu = ?", (client_address[0],False))
+            result = c.fetchone()
 
-            # print("Number de message à envoyer au client:", result[0])
+            print("Number de message à envoyer au client:", result[0])
             
-            # # j'envoie le nombre de msg en attente (peut-être à zéro)
-            # nb_msg = str(result[0])
-            # #client_connection.send(nb_msg.encode())
-            # send_data(client_connection,nb_msg.encode(),key_partaged)
+            # j'envoie le nombre de msg en attente (peut-être à zéro)
+            nb_msg = str(result[0])
+            #client_connection.send(nb_msg.encode())
+            send_data(client_connection,nb_msg.encode(),key_partaged)
             
-            # #rep = client_connection.recv(1024)
-            # rep = recv_message(client_connection,key_partaged)
+            #rep = client_connection.recv(1024)
+            rep = recv_message(client_connection,key_partaged)
             
-            # if rep.decode() == "yes":
-            #     c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
-            #     rows = c.fetchall()
+            if rep.decode() == "yes":
+                c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
+                rows = c.fetchall()
                 
-            #     for row in rows:
-            #         print(row)
+                for row in rows:
+                    print(row)
                     
-            #         source = encrypt(row[2],key_partaged)
-            #         subject = encrypt(row[3],key_partaged)
-            #         text = encrypt(row[4],key_partaged)
+                    source = encrypt(row[2],key_partaged)
+                    subject = encrypt(row[3],key_partaged)
+                    text = encrypt(row[4],key_partaged)
                     
-            #         c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
-            #         conn.commit()
+                    c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
+                    conn.commit()
                     
-            #         #client_connection.send(source.encode())
-            #         send_data(client_connection,source.encode(),key_partaged)
-            #         print("j'ai envoyé la source")
-            #         print("j'attends signal")
-            #         #rep = client_connection.recv(1024)
-            #         rep = recv_message(client_connection,key_partaged)
+                    #client_connection.send(source.encode())
+                    send_data(client_connection,source.encode(),key_partaged)
+                    print("j'ai envoyé la source")
+                    print("j'attends signal")
+                    #rep = client_connection.recv(1024)
+                    rep = recv_message(client_connection,key_partaged)
                     
-            #         if (rep.decode() == "ok"):
-            #             print("j'ai recu le signal")
-            #             #client_connection.send(subject.encode())
-            #             send_data(client_connection,subject.encode(),key_partaged)
-            #             print("j'ai envoyé")
-            #             #rep = client_connection.recv(1024)
-            #             rep = recv_message(client_connection,key_partaged)
+                    if (rep.decode() == "ok"):
+                        print("j'ai recu le signal")
+                        #client_connection.send(subject.encode())
+                        send_data(client_connection,subject.encode(),key_partaged)
+                        print("j'ai envoyé")
+                        #rep = client_connection.recv(1024)
+                        rep = recv_message(client_connection,key_partaged)
                     
-            #         if (rep.decode() == "ok"):
-            #             print("j'ai recu le signal")
-            #             send_data(client_connection,text.encode(),key_partaged)
-            #             #client_connection.send(text.encode())
-            #             print("j'ai envoyé")
-            #             #rep = client_connection.recv(1024)
-            #             rep = recv_message(client_connection,key_partaged)
+                    if (rep.decode() == "ok"):
+                        print("j'ai recu le signal")
+                        send_data(client_connection,text.encode(),key_partaged)
+                        #client_connection.send(text.encode())
+                        print("j'ai envoyé")
+                        #rep = client_connection.recv(1024)
+                        rep = recv_message(client_connection,key_partaged)
                 
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
@@ -533,9 +538,9 @@ while(True):
             c.execute("INSERT INTO connections (ip, port) VALUES (?, ?)", (client_address[0], client_address[1]))
             conn.commit()
             print("\n---> Liste des clients connecté\n")
-            for ip in client_address_list:
-                print(ip,type(ip))
-                print(len(client_address_list))
+            # for ip in client_address_list:
+            #     print(ip,type(ip))
+            #     print(len(client_address_list))
         else:
             print(f'\n--------->Connexion existante de {client_address} mise à jour')
             c.execute("UPDATE connections SET port=? WHERE ip=?", (client_address[1], client_address[0]))
