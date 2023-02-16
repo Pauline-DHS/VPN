@@ -304,32 +304,7 @@ def DiffieHullamKeyExchange(client_connection):
 
     
     return key_16.encode()
-    
-# def encrypt(Messageacrypter,key):
-#     lg=len(Messageacrypter)
-#     MessageCrypte=""
-#     for i in range(lg):
-#         if Messageacrypter[i].isalpha():
-#             if Messageacrypter[i].isupper():
-#                 if ord(Messageacrypter[i])+key > 90:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-#                 else:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-#             else:
-#                 if ord(Messageacrypter[i])+key > 122:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-#                 elif ord(Messageacrypter[i])+key < 65:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key+26)
-#                 else:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-#         elif Messageacrypter[i].isnumeric():
-#             if ord(Messageacrypter[i])+key > 57:
-#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key-10)
-#             else:
-#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-#         else:
-#             MessageCrypte += Messageacrypter[i]
-#     return MessageCrypte
+
 
 #-----------------------------------MÉTHODE RUN DES SOUS-PROCESSUS CLIENTS------------------------------------#
 
@@ -427,17 +402,25 @@ def client_handler(client_connection):
             print("--------------------> J'AI TROUVÉ LE CLIENT DANS LE FICHIER !!!")
             print("J'ai archiver le mail dans la BDD -----> \n")
             id +=1
-            c.execute("INSERT INTO emails (id,connection_ip, source,subject,text,recu) VALUES (?,?, ?,?,?,?)", (id,destinataire, client_address[0],subject,text,False))
+            c.execute("INSERT INTO emails (id,connection_ip, source,subject,text,recu) VALUES (?,?, ?,?,?,?)", (id,destinataire.decode(), client_address[0],subject.decode(),text.decode(),False))
             conn.commit()
-            for ip in client_address_list:
-                print(ip)
+            
+            c.execute('SELECT * FROM emails')
+            rows = c.fetchall() 
+            print('Contenu de la table "client_connections":')
+            for row in rows:
+                print("\'",row,"\'")
                 
         # Y A UN PB POUR LES VERIF DU TUPLE DANS LA LISTE 
         ###################################################################### 
         if recu.decode() == "recv msg ok":
             pass
             print("je regarde dans l'archive si j'ai des msg --> \n")
-            
+            c.execute('SELECT * FROM emails')
+            rows = c.fetchall() 
+            print('Contenu de la table "client_connections":')
+            for row in rows:
+                print("\'",row,"\'")
             c.execute("SELECT COUNT(*) FROM emails WHERE connection_ip = ? and recu = ?", (client_address[0],False))
             result = c.fetchone()
 
@@ -445,22 +428,20 @@ def client_handler(client_connection):
             
             # j'envoie le nombre de msg en attente (peut-être à zéro)
             nb_msg = str(result[0])
-            #client_connection.send(nb_msg.encode())
             send_data(client_connection,nb_msg.encode(),key_partaged)
             
-            #rep = client_connection.recv(1024)
             rep = recv_message(client_connection,key_partaged)
-            
+            print("signal recu\n")
             if rep.decode() == "yes":
                 c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
                 rows = c.fetchall()
-                
+                print("J'ai récuperer tous les messages\n")
                 for row in rows:
                     print(row)
                     
-                    source = encrypt(row[2],key_partaged)
-                    subject = encrypt(row[3],key_partaged)
-                    text = encrypt(row[4],key_partaged)
+                    source = row[2]
+                    subject = row[3]
+                    text = row[4]
                     
                     c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
                     conn.commit()
@@ -520,7 +501,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS emails (id integer,
 
 while(True):
     client_connection, client_address = vpn_server.accept()
-    if client_address[0] == "77.128.169.245" or client_address[0] == "192.168.1.5":
+    if client_address[0] == "77.130.153.105" or client_address[0] == "192.168.1.5":
         client_found = False
         for i, ca in enumerate(client_address_list):
             if ca[0] == client_address[0]:

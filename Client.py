@@ -219,7 +219,6 @@ def open_mail(statut,window_mail):
         mail_list = Listbox(frame)
         # Ajout d'une liste de mails
         mail_list.pack(fill="both", expand=True)
-
         
         cursor.execute("SELECT * FROM email_client ")
         rows = cursor.fetchall()
@@ -228,6 +227,7 @@ def open_mail(statut,window_mail):
         for row in rows:
             print(row)
             mail_list.insert(0, row[1]+" ("+row[2]+")")
+
 
         # Ajout d'un cadre pour contenir les détails du mail sélectionné
         details_frame = Frame(window_mail)
@@ -239,6 +239,9 @@ def open_mail(statut,window_mail):
 
          # Définition d'une fonction pour afficher les détails du mail sélectionné
         def display_details(event):
+            canvas.coords(notif,0,0,0,0)
+            fenetre.update()
+            
             index = mail_list.curselection()[0]
             details_label.destroy()
             source_label = Label(details_frame, text="Source :")
@@ -270,35 +273,6 @@ def open_mail(statut,window_mail):
         menu_bar.add_command(label="Envoyer mail", command=send_mail)
     else:
         window_mail.update()
-
-def decrypt(MessageCrypte,key):
-    lg=len(MessageCrypte)
-    MessageClair=""
-    for i in range(lg):
-        if MessageCrypte[i].isalpha():
-            if MessageCrypte[i].isupper():
-                if ord(MessageCrypte[i])-key < 65:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-                else:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key)
-            else:
-                if ord(MessageCrypte[i])-key < 97:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-                elif ord(MessageCrypte[i])-key < 65:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key+26)
-                else:
-                    MessageClair+=chr(ord(MessageCrypte[i])-key)
-        elif MessageCrypte[i].isnumeric():
-            if ord(MessageCrypte[i])-key < 48:
-                MessageClair+=chr(ord(MessageCrypte[i])-key+10)
-            else:
-                MessageClair+=chr(ord(MessageCrypte[i])-key)
-        else:
-            MessageClair += MessageCrypte[i]
-    return MessageClair     
-        
-# def add_console(console,chaine,color):
-#     console.insert("end", chaine,color)
 
 def on_resize(event):
     width = event.width
@@ -523,21 +497,15 @@ def on_resize(event):
     canvas.coords(module6,299/1200*width, 330/630*height, 902/1200*width, 615/630*height)
     canvas.coords(DATA_txt,1077/1200*width, 345/630*height)
     canvas.itemconfigure(DATA_txt, font=("Robot", int(10/630*height),"bold"))
-    # canvas.coords(bouton1_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
-    # canvas.coords(bouton2_mail,995/1200*width,380/630*height,1035/1200*width,420/630*height)
-    # canvas.coords(txt_mail,1014/1200*width,400/630*height)
-    # canvas.itemconfigure(txt_mail,font=("Robot", int(25/630*height),"bold"))
-    # canvas.coords(dessin_mail,1005/1200*width,388/630*height,1024/1200*width,412/630*height)
     
-    #for i in range(0, 9):
-     #   tuple = file_send[i]
-      #  canvas.coords(tuple[0], 995/1200*width, (370 + (i)*30)/630*height, 1015/1200*width, (390 + (i)*30)/630*height)
-       # canvas.coords(tuple[1], 1070/1200*width,(380 + (i)*30)/630*height)
-        #canvas.coords(tuple[2], 998/1200*width, (387 + (i)*30)/630*height, 1012/1200*width, (387 + (i)*30)/630*height)
-        #canvas.coords(tuple[3], 1005/1200*width, (387 + (i)*30)/630*height, 1005/1200*width, (377 + (i)*30)/630*height)
-        #canvas.coords(tuple[4], 1000/1200*width, (382 + (i)*30)/630*height, 1005/1200*width, (387 + (i)*30)/630*height)
-        #canvas.coords(tuple[5], 1010 /1200*width, (382 + (i)*30)/630*height, 1005/1200*width, (387 + (i)*30)/630*height)
     
+    canvas.coords(bouton1_mail,995/1200*width, 380/630*height, 1035/1200*width, 425/630*height)
+    canvas.coords(bouton2_mail,995/1200*width, 380/630*height, 1035/1200*width, 420/630*height)
+    canvas.coords(txt_mail,1014/1200*width, 400/630*height)
+    canvas.itemconfigure(txt_mail,font=("Robot", int(25/630*height)))
+    canvas.coords(dessin_mail,1005/1200*width, 388/630*height, 1024/1200*width, 412/630*height)
+    
+    canvas.coords(notif,1016/1200*width, 385/630*height, 1026/1200*width, 395/630*height)
 
 def update_speed(speed,x_,y_,x1_,y1_,aiguille,max):        
     width, height = get_window_size()
@@ -772,6 +740,10 @@ def clicked (event) :
                 #vpn_client.send(signal.encode())
                 send_data(vpn_client,signal.encode(),key_partaged)
             else:
+                canvas.coords(notif,1016/1200*width, 385/630*height, 1026/1200*width, 395/630*height)
+                canvas.itemconfigure(notif,fill="red",width=1)
+                fenetre.update()
+                
                 signal = "yes"
                 #vpn_client.send(signal.encode())
                 send_data(vpn_client,signal.encode(),key_partaged)
@@ -784,32 +756,47 @@ def clicked (event) :
                     #source = vpn_client.recv(1024)
                     source = recv_message(vpn_client,key_partaged)
                     print("j'ai recu")
-                    source = decrypt(source.decode(),key_partaged)
+                    #source = decrypt(source.decode(),key_partaged)
                     print("Le destinataire décrypté est : ",source)
                     #vpn_client.send(signal.encode())
                     send_data(vpn_client,signal.encode(),key_partaged)
                     
                     #subject = vpn_client.recv(1024)
                     subject = recv_message(vpn_client,key_partaged)
-                    subject = decrypt(subject.decode(),key_partaged)
+                    #subject = decrypt(subject.decode(),key_partaged)
                     print("Le subject décrypté est : ",subject)
                     #vpn_client.send(signal.encode())
                     send_data(vpn_client,signal.encode(),key_partaged)
                     
                     #text = vpn_client.recv(1024)
                     text = recv_message(vpn_client,key_partaged)
-                    text = decrypt(text.decode(),key_partaged)
+                    #text = decrypt(text.decode(),key_partaged)
                     print("Le text décrypté est : ",text)
                     #vpn_client.send(signal.encode())
                     send_data(vpn_client,signal.encode(),key_partaged)
                     
-                    cursor.execute("SELECT MAX(id) FROM email_client")
-                    last_id = cursor.fetchone()[0]
+                    cursor.execute('SELECT COUNT(*) FROM email_client')
+                    resultat = cursor.fetchone()
                     
+                    if (resultat[0] == 0):
+                        print("y a aucun message archiver")
+                        last_id = 0
+                    else:
+                        print("y a déjà des msg avant")
+                        cursor.execute("SELECT MAX(id) FROM email_client")
+                        last_id = cursor.fetchone()[0]
+                        
                     # Add a new email to the email_client table
-                    cursor.execute("""INSERT INTO email_client (id,source, subject, text) VALUES (?, ?, ?, ?)""", 
-                                (last_id+1,source, subject, text))
-                    open_mail(1)
+                    cursor.execute("""INSERT INTO email_client (id,source, subject, text) VALUES (?, ?, ?, ?,?)""", 
+                                (last_id+1,source.decode(), subject.decode(), text.decode(),False))
+                    #open_mail(1,window_mail)
+                    cursor.execute('SELECT * FROM email_client')
+                    rows = cursor.fetchall()
+
+                    # Affichage des lignes
+                    print('Contenu de la table "email_client":')
+                    for row in rows:
+                        print("\'",row,"\'")
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
@@ -902,31 +889,6 @@ def recv_message(client_connection,key):
     # print("ciphertext : ",ciphertext)
     return decrypt(key,nonce,tag,msg)
 
-# def encrypt(Messageacrypter,key):
-#     lg=len(Messageacrypter)
-#     MessageCrypte=""
-#     for i in range(lg):
-#         if Messageacrypter[i].isalpha():
-#             if Messageacrypter[i].isupper():
-#                 if ord(Messageacrypter[i])+key > 90:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-#                 else:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-#             else:
-#                 if ord(Messageacrypter[i])+key > 122:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key-26)
-#                 elif ord(Messageacrypter[i])+key < 65:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key+26)
-#                 else:
-#                     MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-#         elif Messageacrypter[i].isnumeric():
-#             if ord(Messageacrypter[i])+key > 57:
-#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key-10)
-#             else:
-#                 MessageCrypte+=chr(ord(Messageacrypter[i])+key)
-#         else:
-#             MessageCrypte += Messageacrypter[i]
-#     return MessageCrypte
 
 def encryptFile(_file,_newFile,key):
     file = open(_file,"rb")
@@ -1568,7 +1530,8 @@ cursor.execute("CREATE TABLE IF NOT EXISTS trafic (date INTEGER PRIMARY KEY, som
 cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                                             source TEXT NOT NULL,
                                                             subject TEXT NOT NULL,
-                                                            text TEXT NOT NULL)""")
+                                                            text TEXT NOT NULL, 
+                                                            open boolean)""")
 cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip INTEGER PRIMARY KEY, ad_mail TEXT NOT NULL)")
 # Si elle est vide => signifie que c'est la première connexion du client
 cursor.execute("SELECT COUNT(*) FROM trafic")
@@ -1615,6 +1578,7 @@ bar1_6 = canvas.create_rectangle(0,0,0,0,fill="grey")
 
 bars = [bar0, bar1]
 
+
 cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
 rows = cursor.fetchall()
 nb_ligne = len(rows)
@@ -1639,13 +1603,16 @@ bouton1_mail = canvas.create_rectangle(995,380,1035,425,fill="grey",width=1)
 bouton2_mail = canvas.create_rectangle(995,380,1035,420,fill="#a4c2f4",width=1)
 txt_mail = canvas.create_text(1014,400,text="M",font="Robot 25")
 dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
-
+notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
 ###########################################################################################################################################
 #----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
 ###########################################################################################################################################
 # Paramètres de connexion
 host = '31.33.237.105'
 port = 16387
+
+# host = '31.33.237.105'
+# port = 16387
 
 # Création du socket client
 vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
