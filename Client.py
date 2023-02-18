@@ -848,9 +848,14 @@ def send_data(vpn_client,message,key):
     # print("taille nonce : ",len(nonce))
     # print("taille tag : ",len(tag))
     # print("taille ciphertext : ",len(ciphertext))
+    # Hachage en SHA-256
+    hash_object = hashlib.sha256(message)
+
+    # Convertir le hash en hexadécimal
+    hex_dig = hash_object.hexdigest()
     
     # je stocke les données à envoyer dans un objet pour facilité l'échange
-    data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext}
+    data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext,"hash":hex_dig}
     
     # Je serialize l'objet avant de l'envoyer 
     data_serialized_obj = pickle.dumps(data_obj,protocol=4)
@@ -859,6 +864,9 @@ def send_data(vpn_client,message,key):
     print("tag : ",tag)
     print("ciphertext : ",ciphertext)
     print("TAILLE : ",len(data_serialized_obj))
+    
+    print("LE HASH : ",hex_dig)
+    
     vpn_client.sendall(data_serialized_obj)
     
 def decrypt(key, nonce, tag, ciphertext):
@@ -870,33 +878,34 @@ def decrypt(key, nonce, tag, ciphertext):
 def recv_message(client_connection,key):
     
     data_obj = client_connection.recv(1024)
-    print(data_obj)
-    print("TAILLE OBJET: ",len(data_obj))
-    if len(data_obj) < 1024:
-        padding = b'\x00' * (1024 - len(data_obj))
-        data_obj += padding
-    print("TAILLE OBJET: ",len(data_obj))
-    print(data_obj)
+
+    print("OBJET À DESERIALIZER : ",data_obj)
+    # print("TAILLE: ",len(data_obj))
+    
     data_obj_deserialized = pickle.loads(data_obj)
     
     # Récupérer les données dans différentes variables
     nonce = data_obj_deserialized["nonce"]
     tag = data_obj_deserialized["tag"]
     msg = data_obj_deserialized["msg"]
+    hash = data_obj_deserialized["hash"]
     #nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
     # print("nonce : ",nonce)
     # print("tag : ",tag)
     # print("ciphertext : ",ciphertext)
-    return decrypt(key,nonce,tag,msg)
+    
+    msg = decrypt(key,nonce,tag,msg)
+    
+     # Hachage en SHA-256
+    hash_object = hashlib.sha256(msg)
 
+    # Convertir le hash en hexadécimal
+    hex_dig = hash_object.hexdigest()
+    print("LE HASH : ",hex_dig)
+    if hex_dig != hash:
+        print("Problème d'intégrité ! Les données ont pu être modifié au cours du transfère")
+    return msg
 
-def encryptFile(_file,_newFile,key):
-    file = open(_file,"rb")
-    newFile = open(_newFile,"wb")
-    lignes = file.readlines()
-    for ligne in lignes:
-        nonce, tag , lineEncrypted = encrypt(ligne,key)
-        newFile.write(lineEncrypted)
 
 def keyCalculated(client_private_key,server_public_key,p,g):
     return server_public_key ** client_private_key % p
@@ -1608,8 +1617,8 @@ notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
 #----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
 ###########################################################################################################################################
 # Paramètres de connexion
-host = '31.33.237.105'
-port = 16387
+host = 'localhost'
+port = 24081
 
 # host = '31.33.237.105'
 # port = 16387

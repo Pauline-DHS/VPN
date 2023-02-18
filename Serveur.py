@@ -48,21 +48,27 @@ def encrypt(message,key):
     return (cipher.nonce, tag, ciphertext)
 
 def send_data(vpn_client,message,key):
-    #print("message à envoyer : ",message)
+    # print("message à envoyer : ",message)
     nonce, tag, ciphertext = encrypt(message,key)
-    # print("taille nonce : ",len(nonce))
-    # print("taille tag : ",len(tag))
-    # print("taille ciphertext : ",len(ciphertext))
+    # Hachage en SHA-256
+    hash_object = hashlib.sha256(message)
+
+    # Convertir le hash en hexadécimal
+    hex_dig = hash_object.hexdigest()
+
+    print("LE HASH : ",hex_dig)
     
     # je stocke les données à envoyer dans un objet pour facilité l'échange
-    data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext}
+    data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext,"hash":hex_dig}
     
     # Je serialize l'objet avant de l'envoyer 
     data_serialized_obj = pickle.dumps(data_obj,protocol=4)
     
-    # print("nonce : ",nonce)
-    # print("tag : ",tag)
-    # print("ciphertext : ",ciphertext)
+    print("nonce : ",nonce)
+    print("tag : ",tag)
+    print("ciphertext : ",ciphertext)
+    print("TAILLE : ",len(data_serialized_obj))
+
     vpn_client.sendall(data_serialized_obj)
     
 def decrypt(key, nonce, tag, ciphertext):
@@ -72,6 +78,7 @@ def decrypt(key, nonce, tag, ciphertext):
     msg = cipher.decrypt_and_verify(ciphertext, tag)
 
     print("LE MESSAGE RECU EST : ",msg)
+    
     return msg
 
 def recv_message(client_connection,key):
@@ -87,23 +94,25 @@ def recv_message(client_connection,key):
     nonce = data_obj_deserialized["nonce"]
     tag = data_obj_deserialized["tag"]
     msg = data_obj_deserialized["msg"]
+    hash = data_obj_deserialized["hash"]
     #nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
     # print("nonce : ",nonce)
     # print("tag : ",tag)
     # print("ciphertext : ",ciphertext)
     
-    return decrypt(key,nonce,tag,msg)
+    msg = decrypt(key,nonce,tag,msg)
+    
+     # Hachage en SHA-256
+    hash_object = hashlib.sha256(msg)
 
-# def decryptFile(_file,_newFile,key):
-#     file = open(_file,"rb")
-#     newFile = open(_newFile,"wb")
-#     lignes = file.readlines()
-#     #print("lignes: ",lignes)
-#     for ligne in lignes:
-#         lineEncrypted = decrypt(ligne.decode(),key)
-#         #print("ligne encrypté: ",lineEncrypted)
-#         newFile.write(lineEncrypted)
-        
+    # Convertir le hash en hexadécimal
+    hex_dig = hash_object.hexdigest()
+    
+    print("LE HASH : ",hex_dig)
+    if hex_dig != hash:
+        print("Problème d'intégrité ! Les données ont pu être modifié au cours du transfère")
+    return msg
+
 def keyCalculated(server_private_key,client_public_key,p,g):
     return client_public_key ** server_private_key % p
         
@@ -501,7 +510,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS emails (id integer,
 
 while(True):
     client_connection, client_address = vpn_server.accept()
-    if client_address[0] == "77.130.153.105" or client_address[0] == "192.168.1.5":
+    if client_address[0] == "77.130.108.48" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
         client_found = False
         for i, ca in enumerate(client_address_list):
             if ca[0] == client_address[0]:
