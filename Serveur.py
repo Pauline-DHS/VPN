@@ -121,11 +121,22 @@ def ReceptionFile(key_partaged):
     accepte = "non"
     num = 0
     pourcent = 0
+    signal = "ok"
+    global id_file
+    
+    send_data(client_connection,signal.encode(),key_partaged)
+    
+    ip = recv_message(client_connection,key_partaged)
+            
+    print("Je dois envoyer le fichier au client suivant : ",ip)
+       
+    
+    
     while (client_connection.connect):
         recu = ""
         #recu = client_connection.recv(1024)     
         recu = recv_message(client_connection,key_partaged)
-        print(recu)
+        
         if not recu : return False
         
         if accepte == "non": # Condition si on a pas deja envoyer le nom et la taille du fichier
@@ -134,7 +145,15 @@ def ReceptionFile(key_partaged):
                 nomFich = nomFich.split("OCTETS ")[0]
                 taille = tmp.split("OCTETS ")[1]
                 print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
-
+                nom_fichier = os.path.basename(nomFich)
+                
+                c.execute("SELECT COUNT(*) FROM FICHIERS",)
+                id = c.fetchone()[0]
+                
+                
+                c.execute("INSERT INTO FICHIERS (id,source_ip,destinataire_ip,nom_file,file) VALUES (?,?,?,?,?)", 
+                        (id+1,client_address[0], ip,nom_fichier,""))
+                conn.commit() 
                 accepte = "o" # demande si on accepte ou pas le transfert                               
 
                 if accepte == "o" or accepte == "oui": # Si oui en lenvoi au client et on cree le fichier
@@ -163,12 +182,22 @@ def ReceptionFile(key_partaged):
         else: # Sinon on ecrit au fur et a mesure dans le fichier
             print("j'ai recu le paquet je vais l'archiver")
             f.write(recu)
-            print(recu)
+            #print(recu.decode(),type(recu.decode()))
+            
+            # récupérer l'ancien contenu de la colonne "file"
+            c.execute("SELECT file FROM FICHIERS WHERE id=? AND source_ip=? AND destinataire_ip=? AND nom_file=?", (id+1,client_address[0], ip,nom_fichier))
+            ancien_contenu = c.fetchone()[0]
+            
+            # ajouter du texte à la colonne "file"
+            nouveau_contenu = ancien_contenu + recu.decode()
+
+            # mettre à jour la colonne "file" pour l'enregistrement spécifié
+            c.execute("UPDATE FICHIERS SET file=? WHERE id=?  AND source_ip=? AND destinataire_ip=? AND nom_file=?", (nouveau_contenu, id+1,client_address[0], ip,nom_fichier))
+            conn.commit()
+        
             signal="ok"
-            #client_connection.send(signal.encode())
             
             send_data(client_connection,signal.encode(),key_partaged)
-            print("J'AI BIEN RECU LE PAQUET")
             if taille > 1024: # Si la taille est plus grande que 1024 on s'occupe du %
 
                 # Condition pour afficher le % du transfert :
@@ -202,8 +231,6 @@ def ReceptionFile(key_partaged):
                     
                 num = num + 1024
     
-    
-    #decryptFile("RECU.txt","Serveur_RECU.txt",key_partaged)
     
     return True
     
@@ -324,7 +351,8 @@ def client_handler(client_connection):
     global client_count
     global clients_connected
     global client_address_list
-    global id
+    global id_mail
+    global id_file
     SomUpload = 0
     SomDownload = 0
     now = datetime.now()
@@ -350,6 +378,8 @@ def client_handler(client_connection):
         recu = recv_message(client_connection,key_partaged)
         print(recu)
         if (recu.decode() == "send file"):
+            id_file = id_file + 1
+            
             rep= ReceptionFile(key_partaged)
             if rep == False:
                 print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
@@ -408,32 +438,25 @@ def client_handler(client_connection):
             #client_connection.send(signal.encode())
             send_data(client_connection,signal.encode(),key_partaged)
             
-            print("--------------------> J'AI TROUVÉ LE CLIENT DANS LE FICHIER !!!")
-            print("J'ai archiver le mail dans la BDD -----> \n")
-            id +=1
-            c.execute("INSERT INTO emails (id,connection_ip, source,subject,text,recu) VALUES (?,?, ?,?,?,?)", (id,destinataire.decode(), client_address[0],subject.decode(),text.decode(),False))
+            # print("--------------------> J'AI TROUVÉ LE CLIENT DANS LE FICHIER !!!")
+            # print("J'ai archiver le mail dans la BDD -----> \n")
+            id_mail +=1
+            c.execute("INSERT INTO emails (id_mail,connection_ip, source,subject,text,recu) VALUES (?,?, ?,?,?,?)", (id,destinataire.decode(), client_address[0],subject.decode(),text.decode(),False))
             conn.commit()
             
             c.execute('SELECT * FROM emails')
             rows = c.fetchall() 
-            print('Contenu de la table "client_connections":')
             for row in rows:
                 print("\'",row,"\'")
                 
-        # Y A UN PB POUR LES VERIF DU TUPLE DANS LA LISTE 
-        ###################################################################### 
         if recu.decode() == "recv msg ok":
-            pass
-            print("je regarde dans l'archive si j'ai des msg --> \n")
+            
             c.execute('SELECT * FROM emails')
             rows = c.fetchall() 
-            print('Contenu de la table "client_connections":')
             for row in rows:
                 print("\'",row,"\'")
             c.execute("SELECT COUNT(*) FROM emails WHERE connection_ip = ? and recu = ?", (client_address[0],False))
             result = c.fetchone()
-
-            print("Number de message à envoyer au client:", result[0])
             
             # j'envoie le nombre de msg en attente (peut-être à zéro)
             nb_msg = str(result[0])
@@ -444,7 +467,7 @@ def client_handler(client_connection):
             if rep.decode() == "yes":
                 c.execute("SELECT * FROM emails WHERE connection_ip IN (SELECT ip FROM connections WHERE ip = ?) and recu = ?", (client_address[0],False))
                 rows = c.fetchall()
-                print("J'ai récuperer tous les messages\n")
+                # print("J'ai récuperer tous les messages\n")
                 for row in rows:
                     print(row)
                     
@@ -455,29 +478,33 @@ def client_handler(client_connection):
                     c.execute("UPDATE emails SET recu=? WHERE id=?", (True, row[0]))
                     conn.commit()
                     
-                    #client_connection.send(source.encode())
                     send_data(client_connection,source.encode(),key_partaged)
-                    print("j'ai envoyé la source")
-                    print("j'attends signal")
-                    #rep = client_connection.recv(1024)
                     rep = recv_message(client_connection,key_partaged)
                     
                     if (rep.decode() == "ok"):
-                        print("j'ai recu le signal")
-                        #client_connection.send(subject.encode())
                         send_data(client_connection,subject.encode(),key_partaged)
-                        print("j'ai envoyé")
-                        #rep = client_connection.recv(1024)
                         rep = recv_message(client_connection,key_partaged)
                     
                     if (rep.decode() == "ok"):
-                        print("j'ai recu le signal")
                         send_data(client_connection,text.encode(),key_partaged)
-                        #client_connection.send(text.encode())
-                        print("j'ai envoyé")
-                        #rep = client_connection.recv(1024)
                         rep = recv_message(client_connection,key_partaged)
-                
+        if recu.decode() == "recv file ok":
+            c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (client_address[0],))
+            nb_file = c.fetchall()[0][0]
+            send_data(client_connection,str(nb_file).encode(),key_partaged)
+            print("J'ai envoyé")
+            
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            #J'ENVOIE LE NOMBRE DE FICHIER EN ATTENTE 
+            
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
             client_count -= 1
@@ -492,7 +519,8 @@ client_count = 0
 clients_connected = []
 processus_list = []
 client_address_list = []
-id = 0 
+id_mail = 0 
+id_file = 0
 # Connect to or create the database
 conn = sqlite3.connect('client_connections.db')
 c = conn.cursor()
@@ -506,6 +534,11 @@ c.execute('''CREATE TABLE IF NOT EXISTS emails (id integer,
                                                 text text, 
                                                 recu boolean,
                                                 FOREIGN KEY(connection_ip) REFERENCES connections(ip))''')
+c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
+                                                    source_ip text,
+                                                    destinataire_ip text,
+                                                    nom_file text,
+                                                    file text)''')
 
 
 while(True):

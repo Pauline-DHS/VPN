@@ -662,7 +662,7 @@ def clicked (event) :
         if connecte :
             file=send_file()
             #encryptFile(file,"file_encrypted.txt",key_partaged)
-            sendFile(file)
+            sendFile(file,"127.0.0.1")
             # Ajout du fichier envoyé dans le module DATA
             #tuple = file_send[compt]
             #canvas.itemconfigure(tuple[0],state="normal")
@@ -722,9 +722,7 @@ def clicked (event) :
             if error != 0:
                 print("je suis deco")
                 raise socket.error(error)
-                print("je m'en vais")
             
-
             # envoyer un paquet de données au serveur
             signal = "recv msg ok"
             #vpn_client.send(signal.encode())
@@ -801,7 +799,38 @@ def clicked (event) :
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
     
-    
+    if connecte:
+        try:
+            # vérifier l'état du socket
+            error = vpn_client.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if error != 0:
+                print("je suis deco")
+                raise socket.error(error)
+            
+            # envoyer un paquet de données au serveur
+            signal = "recv file ok"
+            
+            send_data(vpn_client,signal.encode(),key_partaged)
+            
+            #nb_msg = vpn_client.recv(1024)
+            nb_file = recv_message(vpn_client,key_partaged)
+            print("il y a ",nb_file.decode()," file")
+            nb_file = nb_file.decode()
+            
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            ###############################################################################
+            #JE REÇOIS LE NOMBRE DE FICHIER EN ATTENTE
+            
+        except socket.error as e:
+            # gérer l'erreur si la connexion est interrompue
+            print("La connexion a été interrompue. Erreur :", e)
     
             
             
@@ -920,7 +949,7 @@ def sendFileQuery():
     
     return recu
        
-def sendFile(file):  
+def sendFile(file,ip):  
     global console
     global console_window
     i = 1
@@ -928,9 +957,13 @@ def sendFile(file):
     send_data(vpn_client,signal.encode(),key_partaged)
     add_data_upload(cursor,len(signal.encode()),now)
     
+    rep = recv_message(vpn_client,key_partaged)
+    
     # Définissions de la taille du fichier
     octets = os.path.getsize(file) / 944
 
+    send_data(vpn_client,ip.encode(),key_partaged)
+    
     # Vérifiaction des informations
     print ("\n---> Fichier à envoyer : '" + file + "' [" + str(octets) + " Ko]")
     #console.insert("end","Fichier à envoyer : " + file + " [" + str(octets) + " Ko]\n","orange")
@@ -953,17 +986,17 @@ def sendFile(file):
             print("test 1")
             num = 0
             pourcent = 0
-            octets = octets * 944 # Reconverti en octets
+            octets = octets * 870 # Reconverti en octets
             fich = open(file, "rb")
             remaining_data = octets
-            if octets > 944:	# Si le fichier est plus lourd que 1024 on l'envoi par paquet
+            if octets > 870:	# Si le fichier est plus lourd que 1024 on l'envoi par paquet
                 print("test 2")
-                for i in range(int(octets / 944)+1):       
+                for i in range(int(octets / 870)+1):       
                     print("test 3") 
-                    if remaining_data > 944:
+                    if remaining_data > 870:
                         print("test 4")
                         fich.seek(num, 0) # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
-                        donnees = fich.read(944) # Lecture du fichier en 1024 octets    
+                        donnees = fich.read(870) # Lecture du fichier en 1024 octets    
                         print("Donné à envoyé : ",donnees)       
                         #vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
                         #encoded_message = donnees.encode('utf-16-le')
@@ -974,8 +1007,8 @@ def sendFile(file):
                         rep = recv_message(vpn_client,key_partaged)
                         print("JE PEUX CONTINUER")
                         add_data_upload(cursor,len(donnees),now) 
-                        num = num + 944
-                        remaining_data -= 944
+                        num = num + 870
+                        remaining_data -= 870
                 
                         # Condition pour afficher le % du transfert (pas trouve mieu) :
                         if pourcent == 0 and num > octets / 100 * 10 and num < octets / 100 * 20:
@@ -1008,8 +1041,8 @@ def sendFile(file):
                     else:
                         print("test 5")
                         donnees = fich.read(int(remaining_data))
-                        if len(donnees) < 944:
-                            padding = b'\x00' * (944 - len(donnees))
+                        if len(donnees) < 870:
+                            padding = b'\x00' * (870 - len(donnees))
                             donnees += padding
                         #vpn_client.send(donnees)
                         print("Donné à envoyé en une fois: ",donnees)   
@@ -1025,8 +1058,8 @@ def sendFile(file):
             else: # Sinon on envoi tous d'un coup
                 print("test 6")
                 donnees = fich.read()
-                if len(donnees) < 944:
-                            padding = b'\x00' * (944 - len(donnees))
+                if len(donnees) < 870:
+                            padding = b'\x00' * (870 - len(donnees))
                             donnees += padding
                 #vpn_client.send(donnees)
                 print("Donné à envoyé en une fois: ",donnees)
