@@ -960,7 +960,7 @@ def sendFile(file,ip):
     rep = recv_message(vpn_client,key_partaged)
     
     # Définissions de la taille du fichier
-    octets = os.path.getsize(file) / 1024
+    octets = os.path.getsize(file) / 870
     print("nombre d'octets :", octets)
     send_data(vpn_client,ip.encode(),key_partaged)
     
@@ -1041,9 +1041,9 @@ def sendFile(file,ip):
                     else:
                         print("test 5")
                         donnees = fich.read(int(remaining_data))
-                        if len(donnees) < 870:
-                            padding = b'\x00' * (870 - len(donnees))
-                            donnees += padding
+                        # if len(donnees) < 870:
+                        #     padding = b'\x00' * (870 - len(donnees))
+                            # donnees += padding
                         #vpn_client.send(donnees)
                         print("Donné à envoyé en une fois: ",donnees)   
                         send_data(vpn_client,donnees,key_partaged)
@@ -1058,13 +1058,14 @@ def sendFile(file,ip):
             else: # Sinon on envoi tous d'un coup
                 print("test 6")
                 donnees = fich.read()
-                if len(donnees) < 870:
-                            padding = b'\x00' * (870 - len(donnees))
-                            donnees += padding
+                # if len(donnees) < 870:
+                #             padding = b'\x00' * (870 - len(donnees))
+                #             donnees += padding
                 #vpn_client.send(donnees)
                 print("Donné à envoyé en une fois: ",donnees)
                 send_data(vpn_client,donnees,key_partaged)
                 add_data_upload(cursor,len(donnees),now) 
+                recv_message(vpn_client,key_partaged)
 
             fich.close()
             console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")

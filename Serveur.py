@@ -186,7 +186,7 @@ def ReceptionFile(key_partaged):
             ancien_contenu = c.fetchone()[0]
             
             # ajouter du texte à la colonne "file"
-            nouveau_contenu = ancien_contenu + recu.decode('utf-16')
+            nouveau_contenu = ancien_contenu + recu.decode()
 
             # mettre à jour la colonne "file" pour l'enregistrement spécifié
             c.execute("UPDATE FICHIERS SET file=? WHERE id=?  AND source_ip=? AND destinataire_ip=? AND nom_file=?", (nouveau_contenu, id+1,client_address[0], ip,nom_fichier))
@@ -442,12 +442,13 @@ def sendFile(file,ip,key_partaged):
             else: # Sinon on envoi tous d'un coup
                 print("test 6")
                 donnees = fich.read()
-                if len(donnees) < 870:
-                            padding = b'\x00' * (870 - len(donnees))
-                            donnees += padding
+                # if len(donnees) < 870:
+                #             padding = b'\x00' * (870 - len(donnees))
+                #             donnees += padding
                 #vpn_client.send(donnees)
                 print("Donné à envoyé en une fois: ",donnees)
                 send_data(client_connection,donnees,key_partaged)
+                recv_message(client_connection,key_partaged)
 
             fich.close()
             # console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")
