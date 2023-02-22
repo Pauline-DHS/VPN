@@ -608,28 +608,28 @@ def client_handler(client_connection):
                         send_data(client_connection,text.encode(),key_partaged)
                         rep = recv_message(client_connection,key_partaged)
         if recu.decode() == "recv file ok":
+            pass 
+            # ip = client_address[0]
+            # c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (ip.encode(),))
+            # nb_file = c.fetchall()[0][0]
+            # send_data(client_connection,str(nb_file).encode(),key_partaged)
+            # print("J'ai envoyé : ",nb_file)
             
-            ip = client_address[0]
-            c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (ip.encode(),))
-            nb_file = c.fetchall()[0][0]
-            send_data(client_connection,str(nb_file).encode(),key_partaged)
-            print("J'ai envoyé : ",nb_file)
-            
-            rep = recv_message(client_connection,key_partaged)
-            print(rep)
-            if rep.decode() == "oui":
-                print("j'ai rcu le signal pour envoyer les fichiers")
-                c.execute('SELECT * FROM fichiers')
-                rows = c.fetchall() 
+            # rep = recv_message(client_connection,key_partaged)
+            # print(rep)
+            # if rep.decode() == "oui":
+            #     print("j'ai rcu le signal pour envoyer les fichiers")
+            #     c.execute('SELECT * FROM fichiers')
+            #     rows = c.fetchall() 
                 
-                for row in rows:
-                    #print("\'",row,"\'")
-                    print("je suis dans le for")
-                    file = open("fichier_tmp.txt", "w")
-                    file.write(row[4])
+            #     for row in rows:
+            #         #print("\'",row,"\'")
+            #         print("je suis dans le for")
+            #         file = open("fichier_tmp.txt", "w")
+            #         file.write(row[4])
                     
-                    print("je lance la fonction")
-                    sendFile("fichier_tmp.txt",client_address[0],key_partaged)
+            #         print("je lance la fonction")
+            #         sendFile("fichier_tmp.txt",client_address[0],key_partaged)
             
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
