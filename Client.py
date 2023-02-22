@@ -817,17 +817,13 @@ def clicked (event) :
             print("il y a ",nb_file.decode()," file")
             nb_file = nb_file.decode()
             
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            #JE REÇOIS LE NOMBRE DE FICHIER EN ATTENTE
+            signal = "ok"
+            send_data(vpn_client,signal.encode(),key_partaged)
             
+            rep = ReceptionFile(key_partaged)
+            
+            if rep:
+                print("fin")
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
@@ -889,12 +885,12 @@ def send_data(vpn_client,message,key):
     # Je serialize l'objet avant de l'envoyer 
     data_serialized_obj = pickle.dumps(data_obj,protocol=4)
     
-    print("nonce : ",nonce)
-    print("tag : ",tag)
-    print("ciphertext : ",ciphertext)
-    print("TAILLE : ",len(data_serialized_obj))
+    # print("nonce : ",nonce)
+    # print("tag : ",tag)
+    # print("ciphertext : ",ciphertext)
+    # print("TAILLE : ",len(data_serialized_obj))
     
-    print("LE HASH : ",hex_dig)
+    # print("LE HASH : ",hex_dig)
     
     vpn_client.sendall(data_serialized_obj)
     
@@ -908,7 +904,7 @@ def recv_message(client_connection,key):
     
     data_obj = client_connection.recv(1024)
 
-    print("OBJET À DESERIALIZER : ",data_obj)
+    # print("OBJET À DESERIALIZER : ",data_obj)
     # print("TAILLE: ",len(data_obj))
     
     data_obj_deserialized = pickle.loads(data_obj)
@@ -930,7 +926,7 @@ def recv_message(client_connection,key):
 
     # Convertir le hash en hexadécimal
     hex_dig = hash_object.hexdigest()
-    print("LE HASH : ",hex_dig)
+    # print("LE HASH : ",hex_dig)
     if hex_dig != hash:
         print("Problème d'intégrité ! Les données ont pu être modifié au cours du transfère")
     return msg
@@ -972,7 +968,7 @@ def sendFile(file,ip):
     send_data(vpn_client,tmp.encode(),key_partaged)
     add_data_upload(cursor,len(tmp.encode()),now) 
     while (vpn_client.connect):
-        print("j'attend")
+        # print("j'attend")
         #tmp = vpn_client.recv(1024)
         tmp = recv_message(vpn_client,key_partaged)
         print(tmp)
@@ -1079,6 +1075,105 @@ def sendFile(file,ip):
             print (time.strftime("\n--->[%H:%M] transfert annulé."))
             console.insert("end","[%H:%M] transfert annulé.\n","orange")
             return "BYE"
+
+def ReceptionFile(key_partaged):
+    accepte = "non"
+    num = 0
+    pourcent = 0
+    signal = "ok"
+    global id_file
+    
+    ip = recv_message(vpn_client,key_partaged)
+            
+    print("je recois signal")  
+    
+    send_data(vpn_client,signal.encode(),key_partaged)
+    
+    print("j'envoie signal pour recevoir")
+    while (vpn_client.connect):
+        recu = ""
+        #recu = client_connection.recv(1024)     
+        recu = recv_message(vpn_client,key_partaged)
+        print(recu)
+        if not recu : return False
+        
+        if accepte == "non": # Condition si on a pas deja envoyer le nom et la taille du fichier
+                tmp = recu.decode()
+                nomFich = tmp.split("NAME ")[1]
+                nomFich = nomFich.split("OCTETS ")[0]
+                taille = tmp.split("OCTETS ")[1]
+                print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
+                nom_fichier = os.path.basename(nomFich)
+                
+                accepte = "o" # demande si on accepte ou pas le transfert                               
+
+                if accepte == "o" or accepte == "oui": # Si oui en lenvoi au client et on cree le fichier
+                    signal = "GO"
+                    #client_connection.send(signal.encode())
+                    send_data(vpn_client,signal.encode(),key_partaged)
+                    #SomUpload = addDataLenght(recu,SomUpload)
+                    print (time.strftime("\n---> [%H:%M] réception du fichier en cours veuillez patienter..."))
+                    f = open("RECU.txt", "wb")
+                    accepte = "oui"
+                    taille = float(taille) * 1024 # Conversion de la taille en octets pour le %
+                                        
+                else :
+                    signal = "Bye"
+                    #client_connection.send(signal.encode()) # Si pas accepte on ferme le programme
+                    send_data(vpn_client,signal.encode(),key_partaged)
+                    # SomUpload = addDataLenght(recu,SomUpload)
+                    return False
+
+        elif recu.decode('utf-16') == "BYE": # Si on a recu "BYE" le transfer est termine
+
+            print (" -> 100%" ) 
+            f.close()
+            print (time.strftime("\n---> Le %d/%m a %H:%M réception du fichier termine !"))
+            break
+        else: # Sinon on ecrit au fur et a mesure dans le fichier
+            print("j'ai recu le paquet je vais l'archiver")
+            f.write(recu)
+            #print(recu.decode(),type(recu.decode()))
+           
+            signal="ok"
+            
+            send_data(vpn_client,signal.encode(),key_partaged)
+            if taille > 1024: # Si la taille est plus grande que 1024 on s'occupe du %
+
+                # Condition pour afficher le % du transfert :
+                if pourcent == 0 and num > taille / 100 * 10 and num < taille / 100 * 20:
+                    print (" -> 10%")
+                    pourcent = 1
+                elif pourcent == 1 and num > taille / 100 * 20 and num < taille / 100 * 30:
+                    print (" -> 20%")
+                    pourcent = 2
+                elif pourcent < 3 and num > taille / 100 * 30 and num < taille / 100 * 40:
+                    print (" -> 30%")
+                    pourcent = 3
+                elif pourcent < 4 and num > taille / 100 * 40 and num < taille / 100 * 50:
+                    print (" -> 40%")
+                    pourcent = 4
+                elif pourcent < 5 and num > taille / 100 * 50 and num < taille / 100 * 60:
+                    print (" -> 50%")
+                    pourcent = 5
+                elif pourcent < 6 and num > taille / 100 * 60 and num < taille / 100 * 70:
+                    print (" -> 60%")
+                    pourcent = 6
+                elif pourcent < 7 and num > taille / 100 * 70 and num < taille / 100 * 80:
+                    print (" -> 70%")
+                    pourcent = 7
+                elif pourcent < 8 and num > taille / 100 * 80 and num < taille / 100 * 90:
+                    print (" -> 80%")
+                    pourcent = 8
+                elif pourcent < 9 and num > taille / 100 * 90 and num < taille / 100 * 100:
+                    print (" -> 90%" )                   
+                    pourcent = 9
+                    
+                num = num + 1024
+    
+    
+    return True
+    
 
 def speedTestUpload(vpn_client):
     answer="speedtest upload"

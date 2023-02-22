@@ -56,7 +56,7 @@ def send_data(vpn_client,message,key):
     # Convertir le hash en hexadécimal
     hex_dig = hash_object.hexdigest()
 
-    print("LE HASH : ",hex_dig)
+    # print("LE HASH : ",hex_dig)
     
     # je stocke les données à envoyer dans un objet pour facilité l'échange
     data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext,"hash":hex_dig}
@@ -64,10 +64,10 @@ def send_data(vpn_client,message,key):
     # Je serialize l'objet avant de l'envoyer 
     data_serialized_obj = pickle.dumps(data_obj,protocol=4)
     
-    print("nonce : ",nonce)
-    print("tag : ",tag)
-    print("ciphertext : ",ciphertext)
-    print("TAILLE : ",len(data_serialized_obj))
+    # print("nonce : ",nonce)
+    # print("tag : ",tag)
+    # print("ciphertext : ",ciphertext)
+    # print("TAILLE : ",len(data_serialized_obj))
 
     vpn_client.sendall(data_serialized_obj)
     
@@ -85,7 +85,7 @@ def recv_message(client_connection,key):
     
     data_obj = client_connection.recv(1024)
 
-    print("OBJET À DESERIALIZER : ",data_obj)
+    # print("OBJET À DESERIALIZER : ",data_obj)
     # print("TAILLE: ",len(data_obj))
     
     data_obj_deserialized = pickle.loads(data_obj)
@@ -341,7 +341,128 @@ def DiffieHullamKeyExchange(client_connection):
     
     return key_16.encode()
 
+def sendFile(file,ip,key_partaged):  
+    # global console
+    # global console_window
+    i = 1
+    signal = "send file"
+    send_data(client_connection,signal.encode(),key_partaged)
+    print("j'ai envoyé signal que je vais envoyer après son signal")
+    rep = recv_message(client_connection,key_partaged)
+    print("j'ai son signal")
+    # Définissions de la taille du fichier
+    octets = os.path.getsize(file) / 944
+    
+    # Vérifiaction des informations
+    print ("\n---> Fichier à envoyer : '" + file + "' [" + str(octets) + " Ko]")
+    #console.insert("end","Fichier à envoyer : " + file + " [" + str(octets) + " Ko]\n","orange")
+    tmp = "NAME " + file + "OCTETS " + str(octets)
+    #vpn_client.send(tmp.encode()) # Envoi du nom et de la taille du fichier
+    send_data(client_connection,tmp.encode(),key_partaged)
+    while (client_connection.connect):
+        print("j'attend")
+        #tmp = vpn_client.recv(1024)
+        tmp = recv_message(client_connection,key_partaged)
+        print(tmp)
+        print("j'ai reçu")
+        recu = tmp.decode() 
+        if not recu : return False
 
+        if recu == "GO": # Si le serveur accepte on envoi le fichier
+            #console.insert("end","[%H:%M] transfert en cours veuillez patienter...\n","orange")
+            print("test 1")
+            num = 0
+            pourcent = 0
+            octets = octets * 870 # Reconverti en octets
+            fich = open(file, "rb")
+            remaining_data = octets
+            if octets > 870:	# Si le fichier est plus lourd que 1024 on l'envoi par paquet
+                print("test 2")
+                for i in range(int(octets / 870)+1):       
+                    print("test 3") 
+                    if remaining_data > 870:
+                        print("test 4")
+                        fich.seek(num, 0) # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
+                        donnees = fich.read(870) # Lecture du fichier en 1024 octets    
+                        print("Donné à envoyé : ",donnees)       
+                        #vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
+                        #encoded_message = donnees.encode('utf-16-le')
+                        send_data(client_connection,donnees,key_partaged)
+                        
+                        print("jai encoyé un paquet")
+                        #rep=vpn_client.recv(1024)
+                        rep = recv_message(client_connection,key_partaged)
+                        print("JE PEUX CONTINUER")
+                        num = num + 870
+                        remaining_data -= 870
+                
+                        # Condition pour afficher le % du transfert (pas trouve mieu) :
+                        if pourcent == 0 and num > octets / 100 * 10 and num < octets / 100 * 20:
+                            print (" -> 10%")
+                            pourcent = 1
+                        elif pourcent == 1 and num > octets / 100 * 20 and num < octets / 100 * 30:
+                            print (" -> 20%")
+                            pourcent = 2
+                        elif pourcent < 3 and num > octets / 100 * 30 and num < octets / 100 * 40:
+                            print (" -> 30%")
+                            pourcent = 3
+                        elif pourcent < 4 and num > octets / 100 * 40 and num < octets / 100 * 50:
+                            print (" -> 40%")
+                            pourcent = 4
+                        elif pourcent < 5 and num > octets / 100 * 50 and num < octets / 100 * 60:
+                            print (" -> 50%")
+                            pourcent = 5
+                        elif pourcent < 6 and num > octets / 100 * 60 and num < octets / 100 * 70:
+                            print (" -> 60%")
+                            pourcent = 6
+                        elif pourcent < 7 and num > octets / 100 * 70 and num < octets / 100 * 80:
+                            print (" -> 70%")
+                            pourcent = 7
+                        elif pourcent < 8 and num > octets / 100 * 80 and num < octets / 100 * 90:
+                            print (" -> 80%")
+                            pourcent = 8
+                        elif pourcent < 9 and num > octets / 100 * 90 and num < octets / 100 * 100:
+                            print (" -> 90%")                    
+                            pourcent = 9
+                    else:
+                        print("test 5")
+                        donnees = fich.read(int(remaining_data))
+                        if len(donnees) < 870:
+                            padding = b'\x00' * (870 - len(donnees))
+                            donnees += padding
+                        #vpn_client.send(donnees)
+                        print("Donné à envoyé en une fois: ",donnees)   
+                        send_data(client_connection,donnees,key_partaged)
+                        print("jai encoyé un paquet")
+                        #rep=vpn_client.recv(1024)
+                        rep = recv_message(client_connection,key_partaged)
+                        print("JE PEUX CONTINUER")
+                        print (" -> 100%")  
+                        break  
+                        
+            else: # Sinon on envoi tous d'un coup
+                print("test 6")
+                donnees = fich.read()
+                if len(donnees) < 870:
+                            padding = b'\x00' * (870 - len(donnees))
+                            donnees += padding
+                #vpn_client.send(donnees)
+                print("Donné à envoyé en une fois: ",donnees)
+                send_data(client_connection,donnees,key_partaged)
+
+            fich.close()
+            # console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")
+            signal2 = "BYE"
+            print("fin")
+            time.sleep(1)
+            #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
+            send_data(client_connection,signal2.encode('utf-16'),key_partaged)
+            #print("\nsignal envoyé : ",signal2)
+            return True
+        else:
+            print (time.strftime("\n--->[%H:%M] transfert annulé."))
+            # console.insert("end","[%H:%M] transfert annulé.\n","orange")
+            return "BYE"
 #-----------------------------------MÉTHODE RUN DES SOUS-PROCESSUS CLIENTS------------------------------------#
 
 def modify_list(l, i):
@@ -376,7 +497,7 @@ def client_handler(client_connection):
     while (client_connection.fileno() != -1):
         #recu = client_connection.recv(1024)
         recu = recv_message(client_connection,key_partaged)
-        print(recu)
+        #print(recu)
         if (recu.decode() == "send file"):
             id_file = id_file + 1
             
@@ -494,16 +615,22 @@ def client_handler(client_connection):
             send_data(client_connection,str(nb_file).encode(),key_partaged)
             print("J'ai envoyé")
             
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            ###############################################################################
-            #J'ENVOIE LE NOMBRE DE FICHIER EN ATTENTE 
+            rep = recv_message(client_connection,key_partaged)
+            print(rep)
+            print("j'ai rcu le signal pour envoyer les fichiers")
+            c.execute('SELECT * FROM fichiers')
+            rows = c.fetchall() 
+            
+            for row in rows:
+                #print("\'",row,"\'")
+                print("je suis dans le for")
+                file = open("fichier_tmp.txt", "w")
+                file.write(row[4])
+                
+                if rep.decode() == "ok":
+                    print("je lance la fonction")
+                    sendFile("fichier_tmp.txt",client_address[0],key_partaged)
+                    break
             
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
