@@ -816,19 +816,17 @@ def clicked (event) :
             nb_file = recv_message(vpn_client,key_partaged)
             print("il y a ",nb_file.decode()," file")
             nb_file = nb_file.decode()
-            
             if nb_file == "0":
                 signal = "no"
                 send_data(vpn_client,signal.encode(),key_partaged)
             else:
-                signal = "ok"
+                signal = "oui"
                 send_data(vpn_client,signal.encode(),key_partaged)
                 
                 for i in range(int(nb_file)):
                     rep = ReceptionFile(key_partaged)
                     if rep:
                         print("fin")
-                    # send_data(vpn_client,signal.encode(),key_partaged)
                 
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
@@ -962,8 +960,8 @@ def sendFile(file,ip):
     rep = recv_message(vpn_client,key_partaged)
     
     # Définissions de la taille du fichier
-    octets = os.path.getsize(file) / 944
-
+    octets = os.path.getsize(file) / 1024
+    print("nombre d'octets :", octets)
     send_data(vpn_client,ip.encode(),key_partaged)
     
     # Vérifiaction des informations
@@ -1070,10 +1068,9 @@ def sendFile(file,ip):
 
             fich.close()
             console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")
-            signal2 = "BYE"
-            time.sleep(1)
+            signal2 = "bye"
             #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
-            send_data(vpn_client,signal2.encode('utf-16'),key_partaged)
+            send_data(vpn_client,signal2.encode(),key_partaged)
             add_data_upload(cursor,len(signal2.encode()),now) 
             #print("\nsignal envoyé : ",signal2)
             return True
@@ -1086,7 +1083,7 @@ def ReceptionFile(key_partaged):
     accepte = "non"
     num = 0
     pourcent = 0
-    signal = "ok"
+    signal = "recu"
     global id_file
     
     ip = recv_message(vpn_client,key_partaged)
@@ -1111,26 +1108,16 @@ def ReceptionFile(key_partaged):
                 print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
                 nom_fichier = os.path.basename(nomFich)
                 
-                accepte = "o" # demande si on accepte ou pas le transfert                               
+                signal = "GO"
+                #client_connection.send(signal.encode())
+                send_data(vpn_client,signal.encode(),key_partaged)
+                #SomUpload = addDataLenght(recu,SomUpload)
+                print (time.strftime("\n---> [%H:%M] réception du fichier en cours veuillez patienter..."))
+                f = open(nom_fichier, "wb")
+                accepte = "oui"
+                taille = float(taille) * 1024 # Conversion de la taille en octets pour le %
 
-                if accepte == "o" or accepte == "oui": # Si oui en lenvoi au client et on cree le fichier
-                    signal = "GO"
-                    #client_connection.send(signal.encode())
-                    send_data(vpn_client,signal.encode(),key_partaged)
-                    #SomUpload = addDataLenght(recu,SomUpload)
-                    print (time.strftime("\n---> [%H:%M] réception du fichier en cours veuillez patienter..."))
-                    f = open(nom_fichier, "wb")
-                    accepte = "oui"
-                    taille = float(taille) * 1024 # Conversion de la taille en octets pour le %
-                                        
-                else :
-                    signal = "Bye"
-                    #client_connection.send(signal.encode()) # Si pas accepte on ferme le programme
-                    send_data(vpn_client,signal.encode(),key_partaged)
-                    # SomUpload = addDataLenght(recu,SomUpload)
-                    return False
-
-        elif recu.decode('utf-16') == "BYE": # Si on a recu "BYE" le transfer est termine
+        elif recu.decode() == "bye": # Si on a recu "BYE" le transfer est termine
 
             print (" -> 100%" ) 
             f.close()

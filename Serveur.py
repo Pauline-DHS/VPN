@@ -169,7 +169,7 @@ def ReceptionFile(key_partaged):
                     # SomUpload = addDataLenght(recu,SomUpload)
                     return False
 
-        elif recu.decode('utf-16') == "BYE": # Si on a recu "BYE" le transfer est termine
+        elif recu.decode() == "bye": # Si on a recu "BYE" le transfer est termine
 
             print (" -> 100%" ) 
             f.close()
@@ -186,7 +186,7 @@ def ReceptionFile(key_partaged):
             ancien_contenu = c.fetchone()[0]
             
             # ajouter du texte à la colonne "file"
-            nouveau_contenu = ancien_contenu + recu.decode()
+            nouveau_contenu = ancien_contenu + recu.decode('utf-16')
 
             # mettre à jour la colonne "file" pour l'enregistrement spécifié
             c.execute("UPDATE FICHIERS SET file=? WHERE id=?  AND source_ip=? AND destinataire_ip=? AND nom_file=?", (nouveau_contenu, id+1,client_address[0], ip,nom_fichier))
@@ -339,26 +339,28 @@ def DiffieHullamKeyExchange(client_connection):
     return key_16.encode()
 
 def sendFile(file,ip,key_partaged):  
-    # global console
-    # global console_window
-    i = 1
+    
+    # Envoie d'un premier signal pour annoncé que la fonction est lancé
     signal = "send file"
     send_data(client_connection,signal.encode(),key_partaged)
     print("j'ai envoyé signal que je vais envoyer après son signal")
+    
+    # Envoie d'un signal pour me dire que le client est prêt à recevoir les paquets
     rep = recv_message(client_connection,key_partaged)
-    print("j'ai son signal")
+    print("j'ai son signal : ",rep)
+    
     # Définissions de la taille du fichier
     octets = os.path.getsize(file) / 944
     
     # Vérifiaction des informations
     print ("\n---> Fichier à envoyer : '" + file + "' [" + str(octets) + " Ko]")
-    #console.insert("end","Fichier à envoyer : " + file + " [" + str(octets) + " Ko]\n","orange")
     tmp = "NAME " + file + "OCTETS " + str(octets)
-    #vpn_client.send(tmp.encode()) # Envoi du nom et de la taille du fichier
+    
+    # Envoie des informations du fichiers qui va être envoyé
     send_data(client_connection,tmp.encode(),key_partaged)
+    
     while (client_connection.connect):
         print("j'attend")
-        #tmp = vpn_client.recv(1024)
         tmp = recv_message(client_connection,key_partaged)
         print(tmp)
         print("j'ai reçu")
@@ -449,11 +451,10 @@ def sendFile(file,ip,key_partaged):
 
             fich.close()
             # console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")
-            signal2 = "BYE"
+            signal2 = "bye"
             print("fin")
-            time.sleep(1)
             #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
-            send_data(client_connection,signal2.encode('utf-16'),key_partaged)
+            send_data(client_connection,signal2.encode(),key_partaged)
             #print("\nsignal envoyé : ",signal2)
             return True
         else:
@@ -607,14 +608,16 @@ def client_handler(client_connection):
                         send_data(client_connection,text.encode(),key_partaged)
                         rep = recv_message(client_connection,key_partaged)
         if recu.decode() == "recv file ok":
-            c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (client_address[0],))
+            
+            ip = client_address[0]
+            c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (ip.encode(),))
             nb_file = c.fetchall()[0][0]
             send_data(client_connection,str(nb_file).encode(),key_partaged)
             print("J'ai envoyé : ",nb_file)
             
             rep = recv_message(client_connection,key_partaged)
             print(rep)
-            if rep == "ok":
+            if rep.decode() == "oui":
                 print("j'ai rcu le signal pour envoyer les fichiers")
                 c.execute('SELECT * FROM fichiers')
                 rows = c.fetchall() 
@@ -622,13 +625,11 @@ def client_handler(client_connection):
                 for row in rows:
                     #print("\'",row,"\'")
                     print("je suis dans le for")
-                    file = open(row[3], "w")
+                    file = open("fichier_tmp.txt", "w")
                     file.write(row[4])
                     
-                    if rep.decode() == "ok":
-                        print("je lance la fonction")
-                        sendFile(row[3],client_address[0],key_partaged)
-                        recv_message(client_connection,key_partaged)
+                    print("je lance la fonction")
+                    sendFile("fichier_tmp.txt",client_address[0],key_partaged)
             
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
@@ -668,7 +669,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
 
 while(True):
     client_connection, client_address = vpn_server.accept()
-    if client_address[0] == "77.128.169.188" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
+    if client_address[0] == "77.128.85.173" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
         client_found = False
         for i, ca in enumerate(client_address_list):
             if ca[0] == client_address[0]:
@@ -685,10 +686,6 @@ while(True):
             print(f'\n--------->Connexion de {client_address}')
             c.execute("INSERT INTO connections (ip, port) VALUES (?, ?)", (client_address[0], client_address[1]))
             conn.commit()
-            print("\n---> Liste des clients connecté\n")
-            # for ip in client_address_list:
-            #     print(ip,type(ip))
-            #     print(len(client_address_list))
         else:
             print(f'\n--------->Connexion existante de {client_address} mise à jour')
             c.execute("UPDATE connections SET port=? WHERE ip=?", (client_address[1], client_address[0]))
