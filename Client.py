@@ -799,38 +799,36 @@ def clicked (event) :
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
     
-    # if connecte:
-    #     try:
-    #         # vérifier l'état du socket
-    #         error = vpn_client.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    #         if error != 0:
-    #             print("je suis deco")
-    #             raise socket.error(error)
+    if connecte:
+        try:
+            # vérifier l'état du socket
+            error = vpn_client.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if error != 0:
+                print("je suis deco")
+                raise socket.error(error)
             
-    #         # envoyer un paquet de données au serveur
-    #         signal = "recv file ok"
+            # envoyer un paquet de données au serveur
+            signal = "recv file ok"
             
-    #         send_data(vpn_client,signal.encode(),key_partaged)
+            send_data(vpn_client,signal.encode(),key_partaged)
             
-    #         #nb_msg = vpn_client.recv(1024)
-    #         nb_file = recv_message(vpn_client,key_partaged)
-    #         print("il y a ",nb_file.decode()," file")
-    #         nb_file = nb_file.decode()
-    #         if nb_file == "0":
-    #             signal = "no"
-    #             send_data(vpn_client,signal.encode(),key_partaged)
-    #         else:
-    #             signal = "oui"
-    #             send_data(vpn_client,signal.encode(),key_partaged)
+            #nb_msg = vpn_client.recv(1024)
+            nb_file = recv_message(vpn_client,key_partaged)
+            print("il y a ",nb_file.decode()," file")
+            nb_file = nb_file.decode()
+            if nb_file == "0":
+                signal = "no"
+                send_data(vpn_client,signal.encode(),key_partaged)
+            else:
+                signal = "oui"
+                send_data(vpn_client,signal.encode(),key_partaged)
                 
-    #             for i in range(int(nb_file)):
-    #                 rep = ReceptionFile(key_partaged)
-    #                 if rep:
-    #                     print("fin")
+                for i in range(int(nb_file)):
+                    rep = ReceptionFile(key_partaged)
                 
-    #     except socket.error as e:
-    #         # gérer l'erreur si la connexion est interrompue
-    #         print("La connexion a été interrompue. Erreur :", e)
+        except socket.error as e:
+            # gérer l'erreur si la connexion est interrompue
+            print("La connexion a été interrompue. Erreur :", e)
     
             
             
