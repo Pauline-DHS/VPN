@@ -817,13 +817,19 @@ def clicked (event) :
             print("il y a ",nb_file.decode()," file")
             nb_file = nb_file.decode()
             
-            signal = "ok"
-            send_data(vpn_client,signal.encode(),key_partaged)
-            
-            rep = ReceptionFile(key_partaged)
-            
-            if rep:
-                print("fin")
+            if nb_file == "0":
+                signal = "no"
+                send_data(vpn_client,signal.encode(),key_partaged)
+            else:
+                signal = "ok"
+                send_data(vpn_client,signal.encode(),key_partaged)
+                
+                for i in range(int(nb_file)):
+                    rep = ReceptionFile(key_partaged)
+                    if rep:
+                        print("fin")
+                    # send_data(vpn_client,signal.encode(),key_partaged)
+                
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
@@ -1113,7 +1119,7 @@ def ReceptionFile(key_partaged):
                     send_data(vpn_client,signal.encode(),key_partaged)
                     #SomUpload = addDataLenght(recu,SomUpload)
                     print (time.strftime("\n---> [%H:%M] réception du fichier en cours veuillez patienter..."))
-                    f = open("RECU.txt", "wb")
+                    f = open(nom_fichier, "wb")
                     accepte = "oui"
                     taille = float(taille) * 1024 # Conversion de la taille en octets pour le %
                                         

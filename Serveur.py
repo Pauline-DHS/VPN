@@ -127,10 +127,6 @@ def ReceptionFile(key_partaged):
     send_data(client_connection,signal.encode(),key_partaged)
     
     ip = recv_message(client_connection,key_partaged)
-            
-    print("Je dois envoyer le fichier au client suivant : ",ip)
-       
-    
     
     while (client_connection.connect):
         recu = ""
@@ -177,6 +173,7 @@ def ReceptionFile(key_partaged):
 
             print (" -> 100%" ) 
             f.close()
+            
             print (time.strftime("\n---> Le %d/%m a %H:%M réception du fichier termine !"))
             break
         else: # Sinon on ecrit au fur et a mesure dans le fichier
@@ -613,24 +610,25 @@ def client_handler(client_connection):
             c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (client_address[0],))
             nb_file = c.fetchall()[0][0]
             send_data(client_connection,str(nb_file).encode(),key_partaged)
-            print("J'ai envoyé")
+            print("J'ai envoyé : ",nb_file)
             
             rep = recv_message(client_connection,key_partaged)
             print(rep)
-            print("j'ai rcu le signal pour envoyer les fichiers")
-            c.execute('SELECT * FROM fichiers')
-            rows = c.fetchall() 
-            
-            for row in rows:
-                #print("\'",row,"\'")
-                print("je suis dans le for")
-                file = open("fichier_tmp.txt", "w")
-                file.write(row[4])
+            if rep == "ok":
+                print("j'ai rcu le signal pour envoyer les fichiers")
+                c.execute('SELECT * FROM fichiers')
+                rows = c.fetchall() 
                 
-                if rep.decode() == "ok":
-                    print("je lance la fonction")
-                    sendFile("fichier_tmp.txt",client_address[0],key_partaged)
-                    break
+                for row in rows:
+                    #print("\'",row,"\'")
+                    print("je suis dans le for")
+                    file = open(row[3], "w")
+                    file.write(row[4])
+                    
+                    if rep.decode() == "ok":
+                        print("je lance la fonction")
+                        sendFile(row[3],client_address[0],key_partaged)
+                        recv_message(client_connection,key_partaged)
             
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
@@ -670,7 +668,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
 
 while(True):
     client_connection, client_address = vpn_server.accept()
-    if client_address[0] == "77.130.108.48" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
+    if client_address[0] == "77.128.169.188" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
         client_found = False
         for i, ca in enumerate(client_address_list):
             if ca[0] == client_address[0]:
