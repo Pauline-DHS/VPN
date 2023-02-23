@@ -587,9 +587,6 @@ def compteur(X,x,y,x1,y1,speed_txt,aiguille):
                 fenetre.update()
             break  
 
-
-
-
 ###########################################################################################################################################
 #-----------------------------------------------INTERACTION AVEC LE SERVEUR VIA L'INTERFACE-----------------------------------------------#
 ###########################################################################################################################################
@@ -1542,10 +1539,10 @@ linefleche_up1_3 = canvas.create_line(0, 0, 0, 0,width=2)
 linefleche_up1_4 = canvas.create_line(0, 0, 0, 0,width=2)
 
 up_0 = canvas.create_text(0, 0,text="0", font=("Arial bold", 12),fill="white")
-up_250 = canvas.create_text(0, 0, text="250", font=("Arial bold", 12),fill="white")
-up_500 = canvas.create_text(0, 0, text="500", font=("Arial bold", 12),fill="white")
-up_750 = canvas.create_text(0, 0, text="750", font=("Arial bold", 12),fill="white")
-up_1000 = canvas.create_text(0, 0, text="1000", font=("Arial bold", 12),fill="white")
+up_250 = canvas.create_text(0, 0, text="10", font=("Arial bold", 12),fill="white")
+up_500 = canvas.create_text(0, 0, text="20", font=("Arial bold", 12),fill="white")
+up_750 = canvas.create_text(0, 0, text="30", font=("Arial bold", 12),fill="white")
+up_1000 = canvas.create_text(0, 0, text="40+", font=("Arial bold", 12),fill="white")
 
 aiguille_up = canvas.create_line(0, 0, 0, 0, fill="#a4c2f4",width=5)
 
