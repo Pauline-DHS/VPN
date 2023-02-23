@@ -7,6 +7,7 @@ import pickle
 import random
 import socket
 import struct
+import sys
 import threading
 import time
 import math
@@ -1243,20 +1244,22 @@ def speedTestDownload(vpn_client):
     #vpn_client.send(answer.encode())
     add_data_upload(cursor,len(answer.encode()),now) 
     duration = 0
-    total_bytes = 0
-    for i in range(200):
-        start = time.time()
+    taille_octets = 0
+    taille_bits = 0
+    start = time.time()
+    for i in range(50):
         signal = "OK"
         data = recv_message(vpn_client,key_partaged)
         add_data_download(cursor,len(data),now)
-        total_bytes += len(data)
+        taille_octets += sys.getsizeof(data)
+        taille_bits += taille_octets * 8
         #vpn_client.send(signal.encode())
         send_data(vpn_client,signal.encode(),key_partaged)
         add_data_upload(cursor,len(signal.encode()),now) 
-        end = time.time()   
-        duration += (end - start)
+    end = time.time()   
+    duration += (end - start)
     print("duration : ",duration)
-    download_speed = ((60*204800) / (duration / 200)) / 125_000
+    download_speed = ((taille_bits / duration)*8) / 1_000_000
     print(download_speed)
     return int(download_speed)
 

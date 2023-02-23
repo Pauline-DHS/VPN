@@ -524,7 +524,7 @@ def client_handler(client_connection):
             
         if (recu.decode() == "speedtest download"):
             file = open("sauvegarde.txt","rb")
-            for i in range(200):
+            for i in range(50):
                 donnees = file.read(870) # Lecture du fichier en 1024 octets          
                 print(donnees) 
                 #client_connection.send(donnees) 
