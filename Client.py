@@ -1244,7 +1244,7 @@ def speedTestDownload(vpn_client):
     add_data_upload(cursor,len(answer.encode()),now) 
     duration = 0
     total_bytes = 0
-    for i in range(10):
+    for i in range(200):
         start = time.time()
         signal = "OK"
         data = recv_message(vpn_client,key_partaged)
@@ -1253,9 +1253,11 @@ def speedTestDownload(vpn_client):
         #vpn_client.send(signal.encode())
         send_data(vpn_client,signal.encode(),key_partaged)
         add_data_upload(cursor,len(signal.encode()),now) 
-        end = time.time()
+        end = time.time()   
         duration += (end - start)
-    download_speed = ((total_bytes*8) / (duration / 50))/1_000_000
+    print("duration : ",duration)
+    download_speed = ((60*204800) / (duration / 200)) / 125_000
+    print(download_speed)
     return int(download_speed)
 
 
