@@ -671,7 +671,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
 
 while(True):
     client_connection, client_address = vpn_server.accept()
-    if client_address[0] == "77.128.85.173" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
+    if client_address[0] == "77.128.153.176" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
         client_found = False
         for i, ca in enumerate(client_address_list):
             if ca[0] == client_address[0]:

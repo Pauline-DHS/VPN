@@ -46,10 +46,20 @@ def send_file():
 
 ip_address = ""
 
+def list_cont():
+    cursor.execute("SELECT * FROM contacts ")
+    rows = cursor.fetchall()
+    list=[]
+    for row in rows:
+        print(row)
+        list.append(row[1])
+        print(list)
+    return list
+
 def ip_window(file):
     global ip_address
     window_dest = Toplevel(fenetre)
-    window_dest.geometry("300x200")
+    window_dest.geometry("300x100")
     window_dest.title("Destinataire")
     window_dest.resizable(False,False)
     centrefenetre(window_dest)
@@ -57,9 +67,12 @@ def ip_window(file):
     # Ajout d'un label pour l'adresse IP
     ip_label = Label(window_dest, text="Adresse IP:")
     ip_label.pack()
-
-    # Ajout d'une entrée pour l'adresse IP
-    ip_entry = Entry(window_dest)
+    
+    ip_entry = Combobox(window_dest)
+    
+    list = list_cont()
+        
+    ip_entry['values'] = list
     ip_entry.pack()
 
     def close():
@@ -70,7 +83,7 @@ def ip_window(file):
         window_dest.quit()
         sendFile(file,ip_address)
 
-    add_button = Button(window_dest, text="V", command=close)
+    add_button = Button(window_dest, text="Valider", command=close)
     add_button.pack()
 
     # Démarrage de la boucle principale de la fenêtre
@@ -106,7 +119,7 @@ def open_console(connecte):
             print("je suis pas")
             console.insert("end","Vous n'êtes plus connecté au serveur.\n","red")
 
-def contacts(statut):
+def contacts():
     window_contact = Toplevel(fenetre)
     window_contact.geometry("300x400")
     window_contact.title("Contacts")
@@ -114,15 +127,24 @@ def contacts(statut):
     details_contact.pack()
     cursor.execute("SELECT * FROM contacts ")
     rows = cursor.fetchall()
+    frame = Frame(window_contact,height=300)
+    frame.pack(side="top",fill="both", expand=True)
+    contact_list = Listbox(frame)
+    
+    # Ajout d'une liste de mails
     if len(rows) > 0:
         # Ajout des contacts dans l'interface
         for row in rows:
             print(row)
+            contact_list.insert(0, row[1]+" ("+row[0]+")")
+        
     else:
         details_label = Label(details_contact, text="Vous n'avez aucun contact.")     
         details_label.pack()  
     add_button = Button(window_contact, text="Ajouter un contact", command=lambda :add_contact(window_contact))
     add_button.pack(side="bottom",pady=10)
+    
+    contact_list.pack(side="top",fill="both", expand=True)
 
 def add_contact(window_contact):
     # Code pour ajouter un contact
@@ -139,12 +161,16 @@ def add_contact(window_contact):
     address_entry.pack(pady=5)
     
     def close():
+        ip = ip_entry.get()
+        address = address_entry.get()
+        print(ip,address,type(ip))
+        cursor.execute("INSERT INTO contacts (ip,ad_mail) VALUES (?,?)", (ip, address))
+        window_contact.update()
         add_window.destroy()
     
     add_button = Button(add_window, text="Ajouter", command=close)
     add_button.pack(side="bottom",pady=10)
-    ip = ip_entry.get()
-    address = address_entry.get()
+    
             
 
 def send_mail():
@@ -156,13 +182,12 @@ def send_mail():
     dest_label = Label(window_send, text="Destinataire :")
     dest_label.grid(row=0, column=0, padx=10, pady=10)
 
-    # Ajout d'une entrée pour la destination de l'e-mail
-    dest_entry = Entry(window_send)
-    dest_entry.grid(row=0, column=1, padx=10, pady=10)
-
     # Ajout d'une liste déroulante pour la destination de l'e-mail
     dest_entry = Combobox(window_send)
-    dest_entry['values'] = ['77.130.153.160', 'adresse2@example.com', 'adresse3@example.com']
+    
+    list = list_cont()
+    
+    dest_entry['values'] = list
     dest_entry.grid(row=0, column=1, padx=10, pady=10)
 
     # Ajout d'un label pour le sujet de l'e-mail
@@ -1676,7 +1701,7 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KE
                                                             subject TEXT NOT NULL,
                                                             text TEXT NOT NULL, 
                                                             open boolean)""")
-cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip INTEGER PRIMARY KEY, ad_mail TEXT NOT NULL)")
+cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KEY, ad_mail TEXT NOT NULL)")
 # Si elle est vide => signifie que c'est la première connexion du client
 cursor.execute("SELECT COUNT(*) FROM trafic")
 result = cursor.fetchone()
