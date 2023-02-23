@@ -1215,26 +1215,26 @@ def speedTestUpload(vpn_client):
     #vpn_client.send(answer.encode())
     print("\nDébut du speed test ")
     duration = 0
-    total_bytes = 0
+    taille_bits = 0
     file = open("sauvegarde.txt","rb")
     recu = recv_message(vpn_client,key_partaged)
     if recu.decode() == "GO":
-        for i in range(10):
-            start = time.time()
+        start = time.time()
+        for i in range(50):
             data = file.read(870) # Lecture du fichier en 1024 octets
-            total_bytes += len(data)           
+            taille_bits += sys.getsizeof(data) * 8    
             #vpn_client.send(data)
             send_data(vpn_client,data,key_partaged)
             add_data_upload(cursor,len(data),now)  
             recu = recv_message(vpn_client,key_partaged)
             print("\nJ'ai recu:",recu.decode())
             add_data_download(cursor,len(recu),now) 
-            end = time.time()
-            duration += (end - start)
+        end = time.time()
+        duration += (end - start)
         signal = "quit"
         send_data(vpn_client,signal.encode(),key_partaged)
         #vpn_client.send(signal.encode())
-        download_speed = ((total_bytes*8) / (duration / 50))/1_000_000
+        download_speed = ((taille_bits / duration)*8)/1_000_000
         return int(download_speed)
 
     
@@ -1244,15 +1244,13 @@ def speedTestDownload(vpn_client):
     #vpn_client.send(answer.encode())
     add_data_upload(cursor,len(answer.encode()),now) 
     duration = 0
-    taille_octets = 0
     taille_bits = 0
     start = time.time()
     for i in range(50):
         signal = "OK"
         data = recv_message(vpn_client,key_partaged)
         add_data_download(cursor,len(data),now)
-        taille_octets += sys.getsizeof(data)
-        taille_bits += taille_octets * 8
+        taille_bits += sys.getsizeof(data) * 8
         #vpn_client.send(signal.encode())
         send_data(vpn_client,signal.encode(),key_partaged)
         add_data_upload(cursor,len(signal.encode()),now) 

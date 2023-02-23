@@ -513,7 +513,7 @@ def client_handler(client_connection):
             send_data(client_connection,signal.encode(),key_partaged)
             #client_connection.send(signal.encode())
             print("j'ai envoyé go")
-            for i in range(10):
+            for i in range(50):
                 if recu.decode() == "quit":
                     break
                 signal = "OK"
