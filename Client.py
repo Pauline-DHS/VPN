@@ -39,16 +39,43 @@ def on_closing():
                            icon="warning"):
         fenetre.destroy()
 
+# Fonction qui permet d'afficher les fichiers du dossier courant pour choisir celui qui va être envoyé
 def send_file():
     filepath = filedialog.askopenfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
     return filepath
 
-def open_file():
-    filepath = filedialog.askopenfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
-    if filepath:
-        # code pour ouvrir le fichier sélectionné
-        with open(filepath, "r") as file:
-            print(file.read())
+ip_address = ""
+
+def ip_window(file):
+    global ip_address
+    window_dest = Toplevel(fenetre)
+    window_dest.geometry("300x200")
+    window_dest.title("Destinataire")
+    window_dest.resizable(False,False)
+    centrefenetre(window_dest)
+
+    # Ajout d'un label pour l'adresse IP
+    ip_label = Label(window_dest, text="Adresse IP:")
+    ip_label.pack()
+
+    # Ajout d'une entrée pour l'adresse IP
+    ip_entry = Entry(window_dest)
+    ip_entry.pack()
+
+    def close():
+        global ip_address
+        ip_address = ip_entry.get()
+        print(ip_address)
+        window_dest.destroy()
+        window_dest.quit()
+        sendFile(file,ip_address)
+
+    add_button = Button(window_dest, text="V", command=close)
+    add_button.pack()
+
+    # Démarrage de la boucle principale de la fenêtre
+    window_dest.mainloop()
+
 
 def open_console(connecte):
     global console
@@ -79,7 +106,7 @@ def open_console(connecte):
             print("je suis pas")
             console.insert("end","Vous n'êtes plus connecté au serveur.\n","red")
 
-def contacts():
+def contacts(statut):
     window_contact = Toplevel(fenetre)
     window_contact.geometry("300x400")
     window_contact.title("Contacts")
@@ -99,7 +126,6 @@ def contacts():
 
 def add_contact(window_contact):
     # Code pour ajouter un contact
-    print("je vais ajouter un contact")
     add_window = Toplevel(window_contact)
     add_window.geometry("300x200")
     add_window.title("Ajouter un contact")
@@ -117,12 +143,8 @@ def add_contact(window_contact):
     
     add_button = Button(add_window, text="Ajouter", command=close)
     add_button.pack(side="bottom",pady=10)
-    
     ip = ip_entry.get()
     address = address_entry.get()
-    print(ip)
-    #cursor.execute()
-    
             
 
 def send_mail():
@@ -556,6 +578,7 @@ def clicked (event) :
     width = int(width)
     height = int(height)
     global connecte 
+    global ip_address
     global key_partaged
     print (f'You clicked at {event.x} X {event.y}.')
     if 65/1200*width < event.x < 165/1200*width and 65/630*height < event.y < 165/630*height and statut == 0:
@@ -661,16 +684,10 @@ def clicked (event) :
         fenetre.update()
         if connecte :
             file=send_file()
-            #encryptFile(file,"file_encrypted.txt",key_partaged)
-            sendFile(file,"127.0.0.1")
-            # Ajout du fichier envoyé dans le module DATA
-            #tuple = file_send[compt]
-            #canvas.itemconfigure(tuple[0],state="normal")
-            #canvas.itemconfigure(tuple[1],text=os.path.basename(file),state="normal")
-             #canvas.itemconfigure(tuple[2],state="normal")
-            #canvas.itemconfigure(tuple[3],state="normal")
-            #canvas.itemconfigure(tuple[4],state="normal")
-            #canvas.itemconfigure(tuple[5],state="normal")
+            
+            ip_address = ip_window(file)
+            print("ip : ",ip_address)
+            #sendFile(file,ip_address)
 
             compt = compt + 1
             print(compt)
@@ -697,7 +714,6 @@ def clicked (event) :
         fenetre.update()
         open_console(connecte)
     elif 995/1200*width < event.x < 1035/1200*width and 380/630*height < event.y < 420/630*height:
-        print("coucou j'ai cliqué")
         canvas.coords(bouton1_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(bouton2_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(txt_mail,1014/1200*width,405/630*height)
@@ -709,7 +725,6 @@ def clicked (event) :
         canvas.coords(txt_mail,1014/1200*width,400/630*height)
         canvas.coords(dessin_mail,1005/1200*width,388/630*height,1024/1200*width,412/630*height)
         if connecte :
-            print("vous êtes connectés")
             open_mail(0,window_mail)
         else:
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour ouvrir cette application.")     
@@ -720,7 +735,6 @@ def clicked (event) :
             # vérifier l'état du socket
             error = vpn_client.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if error != 0:
-                print("je suis deco")
                 raise socket.error(error)
             
             # envoyer un paquet de données au serveur
@@ -960,6 +974,8 @@ def sendFile(file,ip):
     # Définissions de la taille du fichier
     octets = os.path.getsize(file) / 870
     print("nombre d'octets :", octets)
+    
+    # Envoie de l'adresse IP
     send_data(vpn_client,ip.encode(),key_partaged)
     
     # Vérifiaction des informations
@@ -1642,7 +1658,6 @@ window_mail.title("Application Email")
 window_mail.resizable(False,False)
 centrefenetre(window_mail)
 window_mail.withdraw()
-
 
 
 ###########################################################################################################################################
