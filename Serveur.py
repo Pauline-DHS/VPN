@@ -67,7 +67,7 @@ def send_data(vpn_client,message,key):
     # print("nonce : ",nonce)
     # print("tag : ",tag)
     # print("ciphertext : ",ciphertext)
-    # print("TAILLE : ",len(data_serialized_obj))
+    print("TAILLE : ",len(data_serialized_obj))
 
     vpn_client.sendall(data_serialized_obj)
     
@@ -147,8 +147,8 @@ def ReceptionFile(key_partaged):
                 id = c.fetchone()[0]
                 
                 
-                c.execute("INSERT INTO FICHIERS (id,source_ip,destinataire_ip,nom_file,file) VALUES (?,?,?,?,?)", 
-                        (id+1,client_address[0], ip,nom_fichier,""))
+                c.execute("INSERT INTO FICHIERS (id,source_ip,destinataire_ip,nom_file,file,recu) VALUES (?,?,?,?,?,?)", 
+                        (id+1,client_address[0], ip,nom_fichier,"",False))
                 conn.commit() 
                 accepte = "o" # demande si on accepte ou pas le transfert                               
 
@@ -457,6 +457,7 @@ def sendFile(name_file,file,ip,key_partaged):
             #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
             send_data(client_connection,signal2.encode(),key_partaged)
             #print("\nsignal envoyé : ",signal2)
+            
             return True
         else:
             print (time.strftime("\n--->[%H:%M] transfert annulé."))
@@ -524,7 +525,7 @@ def client_handler(client_connection):
         if (recu.decode() == "speedtest download"):
             file = open("sauvegarde.txt","rb")
             for i in range(10):
-                donnees = file.read(944) # Lecture du fichier en 1024 octets           
+                donnees = file.read(870) # Lecture du fichier en 1024 octets           
                 #client_connection.send(donnees) 
                 send_data(client_connection,donnees,key_partaged)
                 recu = recv_message(client_connection,key_partaged)
@@ -611,7 +612,7 @@ def client_handler(client_connection):
         if recu.decode() == "recv file ok":
             pass 
             ip = client_address[0]
-            c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ?", (ip.encode(),))
+            c.execute("SELECT COUNT(*) FROM fichiers WHERE destinataire_ip= ? and recu=?", (ip.encode(),False))
             nb_file = c.fetchall()[0][0]
             send_data(client_connection,str(nb_file).encode(),key_partaged)
             print("J'ai envoyé : ",nb_file)
@@ -620,7 +621,7 @@ def client_handler(client_connection):
             print(rep)
             if rep.decode() == "oui":
                 print("j'ai rcu le signal pour envoyer les fichiers")
-                c.execute('SELECT * FROM fichiers')
+                c.execute('SELECT * FROM fichiers WHERE recu=?',(False,))
                 rows = c.fetchall() 
                 
                 for row in rows:
@@ -632,6 +633,8 @@ def client_handler(client_connection):
                     print("j'ai écrit dans le fichier")
                     print("je lance la fonction")
                     sendFile(row[3],"fichier_tmp.txt",client_address[0],key_partaged)
+                    c.execute("UPDATE FICHIERS SET recu=? WHERE id=?", (True, row[0]))
+                    conn.commit()
             
         if (recu.decode() == "exit"):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
@@ -666,7 +669,8 @@ c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
                                                     source_ip text,
                                                     destinataire_ip text,
                                                     nom_file text,
-                                                    file text)''')
+                                                    file text,
+                                                    recu boolean)''')
 
 
 while(True):

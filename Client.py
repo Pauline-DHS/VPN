@@ -1220,7 +1220,7 @@ def speedTestUpload(vpn_client):
     if recu.decode() == "GO":
         for i in range(10):
             start = time.time()
-            data = file.read(944) # Lecture du fichier en 1024 octets
+            data = file.read(870) # Lecture du fichier en 1024 octets
             total_bytes += len(data)           
             #vpn_client.send(data)
             send_data(vpn_client,data,key_partaged)
