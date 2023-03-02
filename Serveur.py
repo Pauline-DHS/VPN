@@ -14,6 +14,9 @@ import time
 from signal import signal, SIGPIPE, SIG_DFL
 from datetime import datetime
 from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 signal(SIGPIPE,SIG_DFL)
 
@@ -290,7 +293,7 @@ def DiffieHullamKeyExchange(client_connection):
     g = 5
 
     # Déclaration de la variable paramètre
-    parameters = ParametersGenerator()
+    parameters = (p,g)
 
     # Conversion du tuble de paramètre en binaire 
     parameters_bytes = struct.pack('!2i',*parameters)
@@ -306,6 +309,7 @@ def DiffieHullamKeyExchange(client_connection):
         
     # Envoi des paramètres au client 
     client_connection.send(parameters_bytes)
+    print("j'ai envoyé")
 
     # Réception de la clé public du client
     client_public_key_byte= client_connection.recv(1024)
@@ -447,7 +451,33 @@ def sendFile(name_file,file,ip,key_partaged):
         else: # Sinon problème de synchronisation
             print (time.strftime("\n--->[%H:%M] transfert annulé."))
             return "BYE"
-        
+
+def Signature(key_partaged):
+    # Générer une paire de clés RSA
+    key = RSA.generate(2048)
+
+    # Message à signer
+    message = b"Hello, world!"
+
+    # Hash du message
+    h = SHA256.new(message)
+
+    # Signer le hash avec la clé privée
+    signature = pkcs1_15.new(key).sign(h)
+    
+    # Envoie de la signature et de la clé
+    send_data(client_connection,signature,key_partaged)
+    
+    # Reception d'un signal pour continuer
+    recv_message(client_connection,key_partaged)
+    
+    # Convertir la clé publique en bytes
+    keypub_bytes = key.publickey().export_key()
+
+    # Envoie de la clé publique pour déchiffrer
+    send_data(client_connection, keypub_bytes, key_partaged)
+
+
 #?##################################################################################################
 #?------------------------------------MISE EN PLACE DU SOCKET--------------------------------------#
 #?##################################################################################################
@@ -495,6 +525,9 @@ def client_handler(client_connection):
     
     # Echange des clés de Diffie-Hullman
     key_partaged = DiffieHullamKeyExchange(client_connection)
+    
+    # Signature pour vérifier l'authenticité de la source
+    Signature(key_partaged)
     
     while (client_connection.fileno() != -1):
         

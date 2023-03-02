@@ -17,6 +17,9 @@ from tkinter import messagebox
 from tkinter.ttk import Combobox 
 from PIL import Image,ImageTk
 from tkinter import filedialog
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 ###########################################################################################################################################
 #---------------------------------------------------------FONCTIONS INTERFACE---------------------------------------------------------#
@@ -613,6 +616,7 @@ def clicked (event) :
                 canvas.itemconfigure(dessin_ON_OFF_module1,fill="green")
                 canvas.itemconfigure(txt_module1, text='Connecté')
                 key_partaged = Diffie_Hullman_Key()
+                verif_Signature(key_partaged)
                 print(key_partaged)
                 print("je teste")
                 if console_window.winfo_exists():
@@ -1392,6 +1396,29 @@ def Diffie_Hullman_Key():
     key_16 = h.hexdigest()[:16]
 
     return key_16.encode()
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.backends import openssl
+
+def verif_Signature(key_partaged):
+    # Message à signer
+    message = b"Hello, world!"
+
+    # Hash du message
+    h = SHA256.new(message)
+    
+    signature = recv_message(vpn_client,key_partaged)
+    signal = "ok signature"
+    send_data(vpn_client,signal.encode(),key_partaged)
+    keypub = recv_message(vpn_client,key_partaged)
+    public_key = load_pem_public_key(keypub, backend=openssl.backend)
+    print(public_key)
+    # Vérifier la signature avec la clé publique
+    try:
+        pkcs1_15.new(public_key).verify(h, signature)
+        print("La signature est valide.")
+    except (ValueError, TypeError):
+        print("La signature est invalide.")
 ###########################################################################################################################################
 #---------------------------------------------------------CRÉATION DE L'INTERFACE---------------------------------------------------------#
 ###########################################################################################################################################
