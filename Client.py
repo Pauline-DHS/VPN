@@ -526,6 +526,68 @@ def on_resize(event):
     canvas.coords(txt_point2,750/1200*width, 385/630*height)
     canvas.itemconfigure(txt_point2, font=("Robot", int(9/630*height),"bold"))
     
+    
+    cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
+    rows = cursor.fetchall()
+    nb_ligne = len(rows)
+    space_size = 438 
+
+    if nb_ligne >=1:
+        row0 = rows[0]
+        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+        pourcentage_down =  (row0[2]*100) / 1_500_000
+        canvas.coords(som1,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
+        canvas.coords(som2,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+        canvas.coords(date0,space_size/1200*width,570/630*height)
+        space_size = space_size +65
+        nb_ligne = nb_ligne -1
+        if nb_ligne >= 1:
+            row0 = rows[1]
+            pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+            pourcentage_down =  (row0[2]*100) / 1_500_000
+            canvas.coords(som3,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
+            canvas.coords(som4,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+            canvas.coords(date1,space_size/1200*width,570/630*height)
+            space_size = space_size +65
+            nb_ligne = nb_ligne -1
+            if nb_ligne >= 1:
+                row0 = rows[2]
+                pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                pourcentage_down =  (row0[2]*100) / 1_500_000
+                canvas.coords(som5,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
+                canvas.coords(som6,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                canvas.coords(date2,space_size/1200*width,570/630*height)
+                space_size = space_size +65
+                nb_ligne = nb_ligne -1
+                if nb_ligne >= 1:
+                    row0 = rows[3]
+                    pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                    pourcentage_down =  (row0[2]*100) / 1_500_000
+                    canvas.coords(som7,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
+                    canvas.coords(som8,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                    canvas.coords(date3,space_size/1200*width,570/630*height)
+                    space_size = space_size +65
+                    nb_ligne = nb_ligne -1
+                    if nb_ligne >= 1:
+                        row0 = rows[4]
+                        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                        pourcentage_down =  (row0[2]*100) / 1_500_000
+                        canvas.coords(som9,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
+                        canvas.coords(som10,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                        canvas.coords(date4,space_size/1200*width,570/630*height)
+                        space_size = space_size +65
+                        nb_ligne = nb_ligne -1
+                        if nb_ligne >= 1:
+                            row0 = rows[5]
+                            pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                            pourcentage_down =  (row0[2]*100) / 1_500_000
+                            canvas.coords(som11,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
+                            canvas.coords(som12,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                            canvas.coords(date5,space_size/1200*width,570/630*height)
+                            space_size = space_size +65
+                            nb_ligne = nb_ligne -1
+   
+    
     # MODULE DATA
     canvas.coords(module6_1,294/1200*width, 325/630*height, 907/1200*width, 620/630*height)
     canvas.coords(module6,299/1200*width, 330/630*height, 902/1200*width, 615/630*height)
@@ -1616,9 +1678,9 @@ date0 = canvas.create_text(0,0,text='',font="Robot 8 bold")
 txt_trafic = canvas.create_text(0, 0, text="TRAFIC USAGE", font="Robot 13 bold", fill="white")
 
 trafic_0GB = canvas.create_text(0, 0, text="0MB", font="Robot 9 bold", fill="white")
-trafic_20GB = canvas.create_text(0, 0, text="5MB", font="Robot 9 bold", fill="white")
-trafic_40GB = canvas.create_text(0, 0, text="10MB", font="Robot 9 bold", fill="white")
-trafic_60GB = canvas.create_text(0, 0, text="15MB", font="Robot 9 bold", fill="white")
+trafic_20GB = canvas.create_text(0, 0, text="4MB", font="Robot 9 bold", fill="white")
+trafic_40GB = canvas.create_text(0, 0, text="8MB", font="Robot 9 bold", fill="white")
+trafic_60GB = canvas.create_text(0, 0, text="12MB", font="Robot 9 bold", fill="white")
 
 point1 = canvas.create_oval(0, 0, 0, 0,fill="#a4c2f4")
 point2 = canvas.create_oval(0, 0, 0, 0,fill="#70757d")
@@ -1658,6 +1720,138 @@ dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
 notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
 
 
+###########################################################################################################################################
+#--------------------------------------------------------CRÉATION DE LA BASE DE DONNÉES---------------------------------------------------#
+###########################################################################################################################################
+date = 0
+now = datetime.now()
+now = now.strftime("%d%m%Y")
+print(now)
+conn = sqlite3.connect("ma_base_de_donnees.db")
+cursor = conn.cursor()
+# Je créée la base de donnée si elle n'existe pas 
+cursor.execute("CREATE TABLE IF NOT EXISTS trafic (date INTEGER PRIMARY KEY, som_up INTEGER,som_down INTEGER)")
+cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            source TEXT NOT NULL,
+                                                            subject TEXT NOT NULL,
+                                                            text TEXT NOT NULL, 
+                                                            open boolean)""")
+cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KEY, ad_mail TEXT NOT NULL)")
+# Si elle est vide => signifie que c'est la première connexion du client
+cursor.execute("SELECT COUNT(*) FROM trafic")
+result = cursor.fetchone()
+if result[0] == 0:
+    print("La table utilisateurs est vide. C'est la première connexion de l'utilisateur")
+    cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
+else:
+    cursor.execute("SELECT COUNT(*) FROM trafic WHERE date=?",(now,))
+    result = cursor.fetchone()
+
+    # Je vérifie si le client s'est déjà connecté aujourd'hui ou pas
+    if result[0] > 0:
+        print("\nLe client s'est déjà connecté aujourd'hui")
+    else:
+        print("\nLe client s'est déjà connecté mais pas aujourd'hui")
+        cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
+
+bar0 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bar0_1 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1_1 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bar0_2 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1_2 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bar0_3 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1_3 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bar0_4 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1_4 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bar0_5 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1_5 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bar0_6 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
+bar1_6 = canvas.create_rectangle(0,0,0,0,fill="grey")
+
+bars = [bar0, bar1]
+
+cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
+rows = cursor.fetchall()
+nb_ligne = len(rows)
+space_size = 438 
+
+
+if nb_ligne >=1:
+    row0 = rows[0]
+    pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+    pourcentage_down =  (row0[2]*100) / 1_500_000
+    som1 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
+    som2 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+    date0 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+    space_size = space_size +65
+    nb_ligne = nb_ligne -1
+    if nb_ligne >= 1:
+        som3 = None
+        som4 = None
+        date1 = None
+        row0 = rows[1]
+        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+        pourcentage_down =  (row0[2]*100) / 1_500_000
+        som3 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
+        som4 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+        date1 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+        space_size = space_size +65
+        nb_ligne = nb_ligne -1
+        if nb_ligne >= 1:
+            som5 = None
+            som6 = None
+            date2 = None
+            row0 = rows[2]
+            pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+            pourcentage_down =  (row0[2]*100) / 1_500_000
+            som5 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
+            som6 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+            date2 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+            space_size = space_size +65
+            nb_ligne = nb_ligne -1
+            if nb_ligne >= 1:
+                som7 = None
+                som8 = None
+                date3 = None
+                row0 = rows[3]
+                pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                pourcentage_down =  (row0[2]*100) / 1_500_000
+                som7 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
+                som8 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+                date3 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+                space_size = space_size +65
+                nb_ligne = nb_ligne -1
+                if nb_ligne >= 1:
+                    som9 = None
+                    som10 = None
+                    date4 = None
+                    row0 = rows[4]
+                    pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                    pourcentage_down =  (row0[2]*100) / 1_500_000
+                    som9 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
+                    som10 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+                    date4 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+                    space_size = space_size +65
+                    nb_ligne = nb_ligne -1
+                    if nb_ligne >= 1:
+                        som11 = None
+                        som12 = None
+                        date5 = None
+                        row0 = rows[5]
+                        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                        pourcentage_down =  (row0[2]*100) / 1_500_000
+                        som11 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
+                        som12 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+                        date5 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+                        space_size = space_size +65
+                        nb_ligne = nb_ligne -1
 ###########################################################################################################################################
 #--------------------------------------------------CRÉATION DES INTERACTIONS DE L'INTERFACE-----------------------------------------------#
 ###########################################################################################################################################
@@ -1710,90 +1904,7 @@ details_label.pack(fill="both", expand=True)
 window_mail.withdraw()
 
 
-###########################################################################################################################################
-#--------------------------------------------------------CRÉATION DE LA BASE DE DONNÉES---------------------------------------------------#
-###########################################################################################################################################
-date = 0
-now = datetime.now()
-now = now.strftime("%d%m%Y")
-print(now)
-conn = sqlite3.connect("ma_base_de_donnees.db")
-cursor = conn.cursor()
-# Je créée la base de donnée si elle n'existe pas 
-cursor.execute("CREATE TABLE IF NOT EXISTS trafic (date INTEGER PRIMARY KEY, som_up INTEGER,som_down INTEGER)")
-cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                            source TEXT NOT NULL,
-                                                            subject TEXT NOT NULL,
-                                                            text TEXT NOT NULL, 
-                                                            open boolean)""")
-cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KEY, ad_mail TEXT NOT NULL)")
-# Si elle est vide => signifie que c'est la première connexion du client
-cursor.execute("SELECT COUNT(*) FROM trafic")
-result = cursor.fetchone()
-if result[0] == 0:
-    print("La table utilisateurs est vide. C'est la première connexion de l'utilisateur")
-    cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
-else:
-    cursor.execute("SELECT COUNT(*) FROM trafic WHERE date=?",(now,))
-    result = cursor.fetchone()
-
-    # Je vérifie si le client s'est déjà connecté aujourd'hui ou pas
-    if result[0] > 0:
-        print("\nLe client s'est déjà connecté aujourd'hui")
-    else:
-        print("\nLe client s'est déjà connecté mais pas aujourd'hui")
-        cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
-
-cursor.execute("SELECT * FROM trafic")
-rows = cursor.fetchall()
-for row in rows:
-    print(row)
-
-bar0 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bar0_1 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1_1 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bar0_2 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1_2 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bar0_3 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1_3 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bar0_4 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1_4 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bar0_5 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1_5 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bar0_6 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
-bar1_6 = canvas.create_rectangle(0,0,0,0,fill="grey")
-
-bars = [bar0, bar1]
-
-
-
-cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
-rows = cursor.fetchall()
-nb_ligne = len(rows)
-i=0
-nb_date = 1
-
-for row in rows:
-    if nb_date < 7:
-        space_size = (830-375) / 7 * nb_ligne + 375
-        pourcentage =  (row[1]/1000000) / 15
-        pourcent =  (row[2]/1000000) /15
-        print(pourcent)
-        bar0 = canvas.create_rectangle((space_size-7-i) ,(560-(149*pourcentage)),(space_size+7-i),560,fill="#a4c2f4")
-        bar1 = canvas.create_rectangle((space_size-7-i),(560-(149*pourcentage)-(149*pourcent)),(space_size+7-i),(560-(149*pourcentage)),fill="grey")
-        date0 = canvas.create_text(0,0,text=row[0],font="Robot 8 bold")
-        
-        i += 65
-        nb_date += 1
     
-
 
 ###########################################################################################################################################
 #----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
