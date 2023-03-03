@@ -23,9 +23,9 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
-###########################################################################################################################################
-#---------------------------------------------------------FONCTIONS INTERFACE---------------------------------------------------------#
-###########################################################################################################################################
+#?##########################################################################################################################################
+#?----------------------------------------------------------FONCTIONS INTERFACE------------------------------------------------------------#
+#?##########################################################################################################################################
 def geoliste(g):
     r=[i for i in range(0,len(g)) if not g[i].isdigit()]
     return [int(g[0:r[0]]),int(g[r[0]+1:r[1]]),int(g[r[1]+1:r[2]]),int(g[r[2]+1:])]
@@ -99,7 +99,6 @@ def ip_window(file):
 def open_console(connecte):
     global console
     global console_window
-    consol_stat = 0
     if console_window.winfo_exists():
         console_window.deiconify()
     else:
@@ -253,7 +252,9 @@ def send_mail():
     send_button.grid(row=3, column=1, padx=10, pady=10)
     
     
-def open_mail(statut,window_mail):
+def open_mail(statut):
+    
+    global window_mail
     
     if window_mail.winfo_exists():
         window_mail.deiconify()
@@ -264,68 +265,48 @@ def open_mail(statut,window_mail):
         window_mail.resizable(False,False)
         centrefenetre(window_mail)
     
-    if statut == 0:
+    cursor.execute("SELECT * FROM email_client ")
+    rows = cursor.fetchall()
+    
+    # Ajout des mails dans l'interface
+    for row in rows:
+        print(row)
+        mail_list.insert(0, row[1]+" ("+row[2]+")")
+
+        # Définition d'une fonction pour afficher les détails du mail sélectionné
+    def display_details(event):
+        canvas.coords(notif,0,0,0,0)
+        fenetre.update()
         
-        frame = Frame(window_mail)
-        frame.pack(side="left", fill="both", expand=True)
+        index = mail_list.curselection()[0]
+        details_label.destroy()
+        source_label = Label(details_frame, text="Source :")
+        source_label.grid(row=0, column=0, padx=10, pady=10)
+        source = Label(details_frame, text=rows[index][1])
+        source.grid(row=0, column=1, padx=0, pady=10)
+        subject_label = Label(details_frame, text="Sujet :")
+        subject_label.grid(row=1, column=0, padx=10, pady=10)
+        subject = Label(details_frame, text=rows[index][2])
+        subject.grid(row=1, column=1, padx=0, pady=10)
 
-        mail_list = Listbox(frame)
-        # Ajout d'une liste de mails
-        mail_list.pack(fill="both", expand=True)
-        
-        cursor.execute("SELECT * FROM email_client ")
-        rows = cursor.fetchall()
-        
-        # Ajout des mails dans l'interface
-        for row in rows:
-            print(row)
-            mail_list.insert(0, row[1]+" ("+row[2]+")")
+        text_label = Label(details_frame, text="Texte :")
+        text_label.grid(row=2, column=0, padx=10, pady=10)
+        text = Label(details_frame, text=rows[index][3])
+        text.grid(row=2, column=1, padx=0, pady=10)
 
-
-        # Ajout d'un cadre pour contenir les détails du mail sélectionné
-        details_frame = Frame(window_mail)
-        details_frame.pack(side="right", fill="both", expand=True)
-
-        # Ajout d'un label pour afficher les détails du mail sélectionné
-        details_label = Label(details_frame, text="Sélectionnez un mail")
-        details_label.pack(fill="both", expand=True)
-
-         # Définition d'une fonction pour afficher les détails du mail sélectionné
-        def display_details(event):
-            canvas.coords(notif,0,0,0,0)
-            fenetre.update()
-            
-            index = mail_list.curselection()[0]
-            details_label.destroy()
-            source_label = Label(details_frame, text="Source :")
-            source_label.grid(row=0, column=0, padx=10, pady=10)
-            source = Label(details_frame, text=rows[index][1])
-            source.grid(row=0, column=1, padx=0, pady=10)
-            subject_label = Label(details_frame, text="Sujet :")
-            subject_label.grid(row=1, column=0, padx=10, pady=10)
-            subject = Label(details_frame, text=rows[index][2])
-            subject.grid(row=1, column=1, padx=0, pady=10)
-
-            text_label = Label(details_frame, text="Texte :")
-            text_label.grid(row=2, column=0, padx=10, pady=10)
-            text = Label(details_frame, text=rows[index][3])
-            text.grid(row=2, column=1, padx=0, pady=10)
-
-            reply_button = Button(details_frame, text="Répondre", command=send_mail)
-            reply_button.grid(row=3, column=1, padx=10, pady=10)
+        reply_button = Button(details_frame, text="Répondre", command=send_mail)
+        reply_button.grid(row=3, column=1, padx=10, pady=10)
 
 
-        # Liaison de la fonction à l'événement "selection" de la liste de mails
-        mail_list.bind("<<ListboxSelect>>", display_details)
-        
-        menu_bar = Menu(window_mail)
-        window_mail.config(menu=menu_bar)    
+    # Liaison de la fonction à l'événement "selection" de la liste de mails
+    mail_list.bind("<<ListboxSelect>>", display_details)
+    
+    menu_bar = Menu(window_mail)
+    window_mail.config(menu=menu_bar)    
 
-        file_menu = Menu(menu_bar)
-        menu_bar.add_command(label="Contacts", command=contacts)
-        menu_bar.add_command(label="Envoyer mail", command=send_mail)
-    else:
-        window_mail.update()
+    menu_bar.add_command(label="Contacts", command=contacts)
+    menu_bar.add_command(label="Envoyer mail", command=send_mail)
+    
 
 def on_resize(event):
     width = event.width
@@ -751,7 +732,7 @@ def clicked (event) :
         canvas.coords(txt_mail,1014/1200*width,400/630*height)
         canvas.coords(dessin_mail,1005/1200*width,388/630*height,1024/1200*width,412/630*height)
         if connecte :
-            open_mail(0,window_mail)
+            open_mail(0)
         else:
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour ouvrir cette application.")     
             console.insert("end","Vous devez être connecté au serveur pour ouvrir cette application.\n","red")
@@ -1689,6 +1670,7 @@ canvas.bind('<Button>',clicked)
 # Mise à jour des formes géométriques lorsque la fenêtre est agrandie
 canvas.bind("<Configure>", on_resize)
 fenetre.protocol("WM_DELETE_WINDOW", on_closing)
+
 console_window = Toplevel(fenetre)
 console_window.title("Nouvelle fenêtre")
 console_window.geometry("600x300")
@@ -1712,6 +1694,19 @@ window_mail.geometry("600x400")
 window_mail.title("Application Email")
 window_mail.resizable(False,False)
 centrefenetre(window_mail)
+frame = Frame(window_mail)
+frame.pack(side="left", fill="both", expand=True)
+mail_list = Listbox(frame)
+# Ajout d'une liste de mails
+mail_list.pack(fill="both", expand=True)
+# Ajout d'un cadre pour contenir les détails du mail sélectionné
+details_frame = Frame(window_mail)
+details_frame.pack(side="right", fill="both", expand=True)
+
+# Ajout d'un label pour afficher les détails du mail sélectionné
+details_label = Label(details_frame, text="Sélectionnez un mail")
+details_label.pack(fill="both", expand=True)
+
 window_mail.withdraw()
 
 
