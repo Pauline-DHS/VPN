@@ -14,4 +14,4 @@ Une fois que le VPN est installé, les utilisateurs peuvent facilement se connec
 👉https://docs.google.com/presentation/d/1jze_ERt7KdsmgiX-hE7vqTsZg3f9KIWqNWcOXmD_76s/edit#slide=id.p.
 
 # ❓ Contribuer
-J'encourage toute critque constructive sur ce projet pour améliorer le VPN. Vous pouvez contribuer en signalant des problèmes, en soumettant des demandes de fonctionnalités ou en soumettant des pull requests.
+J'encourage toutes critques constructives sur ce projet pour améliorer le VPN. Vous pouvez contribuer en signalant des problèmes ou en soumettant des demandes de fonctionnalités.
