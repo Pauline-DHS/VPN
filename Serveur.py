@@ -477,6 +477,27 @@ def Signature(key_partaged):
     # Envoie de la clé publique pour déchiffrer
     send_data(client_connection, keypub_bytes, key_partaged)
 
+def verif_Signature(key_partaged):
+    # Message à signer
+    message = b"Hello, world!"
+
+    # Hash du message
+    h = SHA256.new(message)
+    
+    signature = recv_message(client_connection,key_partaged)
+    signal = "ok signature"
+    send_data(client_connection,signal.encode(),key_partaged)
+    keypub_bytes = recv_message(client_connection,key_partaged)
+    keypub = RSA.import_key(keypub_bytes)
+    print(keypub)
+    # Vérifier la signature avec la clé publique
+    try:
+        pkcs1_15.new(keypub).verify(h, signature)
+        print("La signature est valide.")
+        return True
+    except (ValueError, TypeError):
+        print("La signature est invalide.")
+        return False
 
 #?##################################################################################################
 #?------------------------------------MISE EN PLACE DU SOCKET--------------------------------------#
@@ -528,6 +549,10 @@ def client_handler(client_connection):
     
     # Signature pour vérifier l'authenticité de la source
     Signature(key_partaged)
+    rep = verif_Signature(key_partaged)
+    if rep == False:
+        print("Erreur, la signature du client n'est pas valide")
+        return False
     
     while (client_connection.fileno() != -1):
         

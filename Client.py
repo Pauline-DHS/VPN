@@ -1,5 +1,7 @@
 # coding: utf-8
 from ctypes import pythonapi
+import warnings
+warnings.filterwarnings("ignore")
 from datetime import datetime
 import hashlib
 import os
@@ -550,7 +552,7 @@ def on_resize(event):
     canvas.itemconfigure(DATA_txt, font=("Robot", int(10/630*height),"bold"))
     
     
-    canvas.coords(bouton1_mail,995/1200*width, 380/630*height, 1035/1200*width, 425/630*height)
+    canvas.coords(bouton1_mail2,995/1200*width,385/630*height,1035/1200*width,425/630*height)
     canvas.coords(bouton2_mail,995/1200*width, 380/630*height, 1035/1200*width, 420/630*height)
     canvas.coords(txt_mail,1014/1200*width, 400/630*height)
     canvas.itemconfigure(txt_mail,font=("Robot", int(25/630*height)))
@@ -616,14 +618,18 @@ def clicked (event) :
                 canvas.itemconfigure(dessin_ON_OFF_module1,fill="green")
                 canvas.itemconfigure(txt_module1, text='Connecté')
                 key_partaged = Diffie_Hullman_Key()
-                verif_Signature(key_partaged)
-                print(key_partaged)
-                print("je teste")
-                if console_window.winfo_exists():
-                    print("j'écris dans la console ")
-                    console.insert("end","Les clés ont bien été échangées !\n","green")
-                premier_connexion =  1
-                statut = 1
+                rep = verif_Signature(key_partaged)
+                if rep :
+                    Signature(key_partaged)
+                    if console_window.winfo_exists():
+                        print("j'écris dans la console ")
+                        console.insert("end","Les clés ont bien été échangées !\n","green")
+                    premier_connexion =  1
+                    statut = 1
+                else:
+                    console.insert("end","La signature n'est pas validée, votre connexion n'est pas sécurisée !\n","red")
+                    deconnexion()
+                    return False
         else:
             connecte = reconnection(host,port)
             if connecte:
@@ -631,6 +637,7 @@ def clicked (event) :
                 canvas.itemconfigure(dessin_ON_OFF_module1,fill="green")
                 canvas.itemconfigure(txt_module1, text='Connecté')
                 key_partaged = Diffie_Hullman_Key()
+                console.insert("end","Les clés ont bien été échangées !\n","green")
                 statut =1
             
     elif 65/1200*width < event.x < 165/1200*width and 65/630*height < event.y < 165/630*height and statut == 1:
@@ -711,15 +718,7 @@ def clicked (event) :
         fenetre.update()
         if connecte :
             file=send_file()
-            
             ip_address = ip_window(file)
-            print("ip : ",ip_address)
-            #sendFile(file,ip_address)
-
-            compt = compt + 1
-            print(compt)
-            if (compt > 9):
-                compt = 0 
             
         else:
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour envoyé des fichiers.")
@@ -741,13 +740,13 @@ def clicked (event) :
         fenetre.update()
         open_console(connecte)
     elif 995/1200*width < event.x < 1035/1200*width and 380/630*height < event.y < 420/630*height:
-        canvas.coords(bouton1_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
+        canvas.coords(bouton1_mail2,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(bouton2_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(txt_mail,1014/1200*width,405/630*height)
         canvas.coords(dessin_mail,1005/1200*width,393/630*height,1024/1200*width,417/630*height)
         fenetre.update()
         time.sleep(1/10)
-        canvas.coords(bouton1_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
+        canvas.coords(bouton1_mail2,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(bouton2_mail,995/1200*width,380/630*height,1035/1200*width,420/630*height)
         canvas.coords(txt_mail,1014/1200*width,400/630*height)
         canvas.coords(dessin_mail,1005/1200*width,388/630*height,1024/1200*width,412/630*height)
@@ -771,8 +770,9 @@ def clicked (event) :
             
             #nb_msg = vpn_client.recv(1024)
             nb_msg = recv_message(vpn_client,key_partaged)
-            print("il y a ",nb_msg.decode()," msg")
             nb_msg = nb_msg.decode()
+            if nb_msg != "0":
+                console.insert("end","il y a ",nb_msg.decode()," message(s) en attente(s)...\n","orange")
             
             if (int(nb_msg) == 0):
                 signal = "no"
@@ -786,8 +786,6 @@ def clicked (event) :
                 signal = "yes"
                 #vpn_client.send(signal.encode())
                 send_data(vpn_client,signal.encode(),key_partaged)
-                print("il y a des messages j'envoie signal pour les recevoirs ")
-                print("J'attends le message")
                 
                 signal = "ok"
                 for i in range(int(nb_msg)):
@@ -836,6 +834,8 @@ def clicked (event) :
                     print('Contenu de la table "email_client":')
                     for row in rows:
                         print("\'",row,"\'")
+                        
+                console.insert("end","Les messages ont bien été reçus, vous pouvez les consulter dans voitre boite mail.\n","orange")
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
@@ -857,6 +857,8 @@ def clicked (event) :
             nb_file = recv_message(vpn_client,key_partaged)
             print("il y a ",nb_file.decode()," file")
             nb_file = nb_file.decode()
+            if nb_file != "0":
+                console.insert("end","il y a ",nb_file.decode()," fichier(s) en attente(s)...\n","orange")
             if nb_file == "0":
                 signal = "no"
                 send_data(vpn_client,signal.encode(),key_partaged)
@@ -866,16 +868,12 @@ def clicked (event) :
                 
                 for i in range(int(nb_file)):
                     rep = ReceptionFile(key_partaged)
-                
+                console.insert("end","Les fichiers ont bien été reçus, vous pouvez les retrouver dans le dossier courant.\n","orange")
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
     
             
-            
-
-
-
 
 ###########################################################################################################################################
 #------------------------------------------------------------FONCTIONS BACKEND------------------------------------------------------------#
@@ -1080,36 +1078,22 @@ def sendFile(file,ip):
                             print (" -> 90%")                    
                             pourcent = 9
                     else:
-                        print("test 5")
-                        donnees = fich.read(int(remaining_data))
-                        # if len(donnees) < 870:
-                        #     padding = b'\x00' * (870 - len(donnees))
-                            # donnees += padding
-                        #vpn_client.send(donnees)
-                        print("Donné à envoyé en une fois: ",donnees)   
+                        donnees = fich.read(int(remaining_data))  
                         send_data(vpn_client,donnees,key_partaged)
-                        print("jai encoyé un paquet")
-                        #rep=vpn_client.recv(1024)
                         rep = recv_message(vpn_client,key_partaged)
-                        print("JE PEUX CONTINUER")
                         add_data_upload(cursor,len(donnees),now) 
                         print (" -> 100%")  
                         break  
                         
             else: # Sinon on envoi tous d'un coup
-                print("test 6")
                 donnees = fich.read()
-                # if len(donnees) < 870:
-                #             padding = b'\x00' * (870 - len(donnees))
-                #             donnees += padding
-                #vpn_client.send(donnees)
-                print("Donné à envoyé en une fois: ",donnees)
                 send_data(vpn_client,donnees,key_partaged)
                 add_data_upload(cursor,len(donnees),now) 
                 recv_message(vpn_client,key_partaged)
 
             fich.close()
-            console.insert("end","Le %d/%m a %H:%M transfert termine !\n","orange")
+            #time = datetime.datetime.now()
+            console.insert("end","Transfert du fichier terminé !\n","orange")
             signal2 = "bye"
             #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
             send_data(vpn_client,signal2.encode(),key_partaged)
@@ -1117,8 +1101,10 @@ def sendFile(file,ip):
             #print("\nsignal envoyé : ",signal2)
             return True
         else:
-            print (time.strftime("\n--->[%H:%M] transfert annulé."))
-            console.insert("end","[%H:%M] transfert annulé.\n","orange")
+            print (time.strftime("\n--->Transfert du fichier annulé."))
+            time = datetime.datetime.now()
+            actuel_time = now.hour, ":", now.minute, ":", now.second
+            console.insert("end","Transfert du fichier annulé.\n","orange")
             return "BYE"
 
 def ReceptionFile(key_partaged):
@@ -1400,6 +1386,31 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.backends import openssl
 
+def Signature(key_partaged):
+    # Générer une paire de clés RSA
+    key = RSA.generate(2048)
+
+    # Message à signer
+    message = b"Hello, world!"
+
+    # Hash du message
+    h = SHA256.new(message)
+
+    # Signer le hash avec la clé privée
+    signature = pkcs1_15.new(key).sign(h)
+    
+    # Envoie de la signature et de la clé
+    send_data(vpn_client,signature,key_partaged)
+    
+    # Reception d'un signal pour continuer
+    recv_message(vpn_client,key_partaged)
+    
+    # Convertir la clé publique en bytes
+    keypub_bytes = key.publickey().export_key()
+    
+    # Envoie de la clé publique pour déchiffrer
+    send_data(vpn_client, keypub_bytes, key_partaged)
+
 def verif_Signature(key_partaged):
     # Message à signer
     message = b"Hello, world!"
@@ -1417,8 +1428,10 @@ def verif_Signature(key_partaged):
     try:
         pkcs1_15.new(keypub).verify(h, signature)
         print("La signature est valide.")
+        return True
     except (ValueError, TypeError):
         print("La signature est invalide.")
+        return False
 ###########################################################################################################################################
 #---------------------------------------------------------CRÉATION DE L'INTERFACE---------------------------------------------------------#
 ###########################################################################################################################################
@@ -1428,7 +1441,7 @@ fenetre['bg'] =  '#372589'
 fenetre.geometry("1200x630")
 centrefenetre(fenetre)
 img = Image.open("img.png")
-img = img.resize((2200,1000), Image.ANTIALIAS)
+img = img.resize((2200,1000), Image.BICUBIC)
 img = ImageTk.PhotoImage(img)
 
 # Création d'un canevas qui va contenir tous les éléments de dessins de l'application
@@ -1657,21 +1670,11 @@ trait_10 = canvas.create_line(1020,265,1131,265,width=1)
 trait_11 = canvas.create_line(1020,300,1131,300,width=1)
 trait_12 = canvas.create_line(1020,305,1131,305,width=1)
 
-
-#file_send = []
-#file0 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4",state="hidden")
-#nom_file0 = canvas.create_text(0,0,text="" ,font=("Arial 10 bold"),state="hidden",fill="white")
-#linefleche_down1_1_1 = canvas.create_line(0, 0, 0, 0,width=2,state="hidden")
-#linefleche_down1_2_2 = canvas.create_line(0, 0, 0, 0,width=2,state="hidden")
-#linefleche_down1_3_3 = canvas.create_line(0, 0, 0, 0,width=2,state="hidden")
-#linefleche_down1_4_4 = canvas.create_line(0, 0, 0, 0,width=2,state="hidden" )
-
-
-#file_send.append((file0,nom_file0,linefleche_down1_1_1,linefleche_down1_2_2,linefleche_down1_3_3,linefleche_down1_4_4))
-
-#file_send.append((file2,nom_file2,linefleche_down2_1_1,linefleche_down2_2_2,linefleche_down2_3_3,linefleche_down2_4_4))
-#file_send.append((file3,nom_file3,linefleche_down3_1_1,linefleche_down3_2_2,linefleche_down3_3_3,linefleche_down3_4_4))
-#file_send.append((file4,nom_file4,linefleche_down4_1_1,linefleche_down4_2_2,linefleche_down4_3_3,linefleche_down4_4_4))
+bouton1_mail2 = canvas.create_rectangle(995,380,1035,425,fill="grey",width=1)
+bouton2_mail = canvas.create_rectangle(995,380,1035,420,fill="#a4c2f4",width=1)
+txt_mail = canvas.create_text(1014,400,text="M",font="Robot 25")
+dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
+notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
 
 
 ###########################################################################################################################################
@@ -1775,6 +1778,7 @@ bar1_6 = canvas.create_rectangle(0,0,0,0,fill="grey")
 bars = [bar0, bar1]
 
 
+
 cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
 rows = cursor.fetchall()
 nb_ligne = len(rows)
@@ -1795,11 +1799,7 @@ for row in rows:
         nb_date += 1
     
 
-bouton1_mail = canvas.create_rectangle(995,380,1035,425,fill="grey",width=1)
-bouton2_mail = canvas.create_rectangle(995,380,1035,420,fill="#a4c2f4",width=1)
-txt_mail = canvas.create_text(1014,400,text="M",font="Robot 25")
-dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
-notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
+
 ###########################################################################################################################################
 #----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
 ###########################################################################################################################################
@@ -1813,15 +1813,6 @@ port = 24081
 # Création du socket client
 vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-###########################################################################################################################################
-#-----------------------------------------------INTERACTION AVEC LE SERVEUR VIA L'INTERFACE-----------------------------------------------#
-###########################################################################################################################################
 
-answer = input()
-
-if answer == "exit":
-    vpn_client.close()
-    conn.commit()
-    conn.close()
 
 fenetre.mainloop()
