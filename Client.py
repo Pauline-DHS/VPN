@@ -1410,12 +1410,12 @@ def verif_Signature(key_partaged):
     signature = recv_message(vpn_client,key_partaged)
     signal = "ok signature"
     send_data(vpn_client,signal.encode(),key_partaged)
-    keypub = recv_message(vpn_client,key_partaged)
-    public_key = load_pem_public_key(keypub, backend=openssl.backend)
-    print(public_key)
+    keypub_bytes = recv_message(vpn_client,key_partaged)
+    keypub = RSA.import_key(keypub_bytes)
+    print(keypub)
     # Vérifier la signature avec la clé publique
     try:
-        pkcs1_15.new(public_key).verify(h, signature)
+        pkcs1_15.new(keypub).verify(h, signature)
         print("La signature est valide.")
     except (ValueError, TypeError):
         print("La signature est invalide.")
