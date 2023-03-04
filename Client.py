@@ -170,6 +170,7 @@ def add_contact(window_contact):
         address = address_entry.get()
         print(ip,address,type(ip))
         cursor.execute("INSERT INTO contacts (ip,ad_mail) VALUES (?,?)", (ip, address))
+        conn.commit()
         window_contact.update()
         add_window.destroy()
     
@@ -530,14 +531,15 @@ def on_resize(event):
     cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
     rows = cursor.fetchall()
     nb_ligne = len(rows)
+    print(nb_ligne)
     space_size = 438 
 
     if nb_ligne >=1:
         row0 = rows[0]
         pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
         pourcentage_down =  (row0[2]*100) / 1_500_000
-        canvas.coords(som1,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
-        canvas.coords(som2,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+        canvas.coords(som1,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
+        canvas.coords(som2,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
         canvas.coords(date0,space_size/1200*width,570/630*height)
         space_size = space_size +65
         nb_ligne = nb_ligne -1
@@ -545,8 +547,8 @@ def on_resize(event):
             row0 = rows[1]
             pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
             pourcentage_down =  (row0[2]*100) / 1_500_000
-            canvas.coords(som3,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
-            canvas.coords(som4,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+            canvas.coords(som3,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
+            canvas.coords(som4,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
             canvas.coords(date1,space_size/1200*width,570/630*height)
             space_size = space_size +65
             nb_ligne = nb_ligne -1
@@ -554,8 +556,8 @@ def on_resize(event):
                 row0 = rows[2]
                 pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
                 pourcentage_down =  (row0[2]*100) / 1_500_000
-                canvas.coords(som5,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
-                canvas.coords(som6,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                canvas.coords(som5,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
+                canvas.coords(som6,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
                 canvas.coords(date2,space_size/1200*width,570/630*height)
                 space_size = space_size +65
                 nb_ligne = nb_ligne -1
@@ -563,8 +565,8 @@ def on_resize(event):
                     row0 = rows[3]
                     pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
                     pourcentage_down =  (row0[2]*100) / 1_500_000
-                    canvas.coords(som7,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
-                    canvas.coords(som8,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                    canvas.coords(som7,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
+                    canvas.coords(som8,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
                     canvas.coords(date3,space_size/1200*width,570/630*height)
                     space_size = space_size +65
                     nb_ligne = nb_ligne -1
@@ -572,8 +574,8 @@ def on_resize(event):
                         row0 = rows[4]
                         pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
                         pourcentage_down =  (row0[2]*100) / 1_500_000
-                        canvas.coords(som9,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
-                        canvas.coords(som10,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                        canvas.coords(som9,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
+                        canvas.coords(som10,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
                         canvas.coords(date4,space_size/1200*width,570/630*height)
                         space_size = space_size +65
                         nb_ligne = nb_ligne -1
@@ -581,8 +583,8 @@ def on_resize(event):
                             row0 = rows[5]
                             pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
                             pourcentage_down =  (row0[2]*100) / 1_500_000
-                            canvas.coords(som11,(space_size-7)/1200*width ,(560-150*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
-                            canvas.coords(som12,(space_size-7)/1200*width ,(560-(150*(pourcentage_up)/100))/630*height,(space_size+7)/1200*width,(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100)/630*height)
+                            canvas.coords(som11,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
+                            canvas.coords(som12,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
                             canvas.coords(date5,space_size/1200*width,570/630*height)
                             space_size = space_size +65
                             nb_ligne = nb_ligne -1
@@ -665,12 +667,13 @@ def clicked (event) :
                 if rep :
                     Signature(key_partaged)
                     if console_window.winfo_exists():
-                        print("j'écris dans la console ")
-                        console.insert("end","Les clés ont bien été échangées !\n","green")
+                        if console.winfo_exists():
+                            console.insert("end","Les clés ont bien été échangées !\n","green")
                     premier_connexion =  1
                     statut = 1
                 else:
-                    console.insert("end","La signature n'est pas validée, votre connexion n'est pas sécurisée !\n","red")
+                    if console.winfo_exists():
+                        console.insert("end","La signature n'est pas validée, votre connexion n'est pas sécurisée !\n","red")
                     deconnexion()
                     return False
         else:
@@ -712,11 +715,13 @@ def clicked (event) :
         fenetre.update()
         if connecte:
             speed = speedTestDownload(vpn_client)
-            console.insert("end","Débit de transmission en download: "+str(speed)+" Mbps.\n","blue")
+            if console.winfo_exists():
+                console.insert("end","Débit de transmission en download: "+str(speed)+" Mbps.\n","blue")
             compteur(speed,448,168,448,168,speed_txt_down,aiguille_down)  
         else:
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour lancer des tests.")
-            console.insert("end","Vous devez être connecté au serveur pour lancer des tests.\n","red")
+            if console.winfo_exists():
+                console.insert("end","Vous devez être connecté au serveur pour lancer des tests.\n","red")
         jeton = 0
     elif 710/1200*width < event.x< 823/1200*width and 270/630*height < event.y< 295/630*height and jeton == 0:
         jeton = 1
@@ -737,11 +742,13 @@ def clicked (event) :
         fenetre.update()
         if connecte:
             speed = speedTestUpload(vpn_client)
-            console.insert("end","Débit de transmission en upload: "+str(speed)+" Mbps.\n","blue")
+            if console.winfo_exists():
+                console.insert("end","Débit de transmission en upload: "+str(speed)+" Mbps.\n","blue")
             compteur(speed,768,168,768,168,speed_txt_up,aiguille_up)
         else:
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour lancer des tests.")
-            console.insert("end","Vous devez être connecté au serveur pour lancer des tests.\n","red")
+            if console.winfo_exists():
+                console.insert("end","Vous devez être connecté au serveur pour lancer des tests.\n","red")
         jeton = 0
     elif 1020/1200*width < event.x< 1131/1200*width and 266/630*height < event.y< 300/630*height:
         canvas.coords(bouton_send_rond,1002/1200*width, 270/630*height, 1050/1200*width, 305/630*height)
@@ -797,7 +804,8 @@ def clicked (event) :
             open_mail(0)
         else:
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour ouvrir cette application.")     
-            console.insert("end","Vous devez être connecté au serveur pour ouvrir cette application.\n","red")
+            if console.winfo_exists():
+                console.insert("end","Vous devez être connecté au serveur pour ouvrir cette application.\n","red")
     
     if connecte:    
         try:
@@ -815,7 +823,8 @@ def clicked (event) :
             nb_msg = recv_message(vpn_client,key_partaged)
             nb_msg = nb_msg.decode()
             if nb_msg != "0":
-                console.insert("end","il y a ",nb_msg.decode()," message(s) en attente(s)...\n","orange")
+                if console.winfo_exists():
+                    console.insert("end","il y a ",nb_msg.decode()," message(s) en attente(s)...\n","orange")
             
             if (int(nb_msg) == 0):
                 signal = "no"
@@ -869,6 +878,7 @@ def clicked (event) :
                     # Add a new email to the email_client table
                     cursor.execute("""INSERT INTO email_client (id,source, subject, text) VALUES (?, ?, ?, ?,?)""", 
                                 (last_id+1,source.decode(), subject.decode(), text.decode(),False))
+                    conn.commit()
                     #open_mail(1,window_mail)
                     cursor.execute('SELECT * FROM email_client')
                     rows = cursor.fetchall()
@@ -877,8 +887,8 @@ def clicked (event) :
                     print('Contenu de la table "email_client":')
                     for row in rows:
                         print("\'",row,"\'")
-                        
-                console.insert("end","Les messages ont bien été reçus, vous pouvez les consulter dans voitre boite mail.\n","orange")
+                if console.winfo_exists():        
+                    console.insert("end","Les messages ont bien été reçus, vous pouvez les consulter dans voitre boite mail.\n","orange")
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
@@ -901,7 +911,8 @@ def clicked (event) :
             print("il y a ",nb_file.decode()," file")
             nb_file = nb_file.decode()
             if nb_file != "0":
-                console.insert("end","il y a ",nb_file.decode()," fichier(s) en attente(s)...\n","orange")
+                if console.winfo_exists():
+                    console.insert("end","il y a ",nb_file.decode()," fichier(s) en attente(s)...\n","orange")
             if nb_file == "0":
                 signal = "no"
                 send_data(vpn_client,signal.encode(),key_partaged)
@@ -911,7 +922,8 @@ def clicked (event) :
                 
                 for i in range(int(nb_file)):
                     rep = ReceptionFile(key_partaged)
-                console.insert("end","Les fichiers ont bien été reçus, vous pouvez les retrouver dans le dossier courant.\n","orange")
+                if console.winfo_exists():
+                    console.insert("end","Les fichiers ont bien été reçus, vous pouvez les retrouver dans le dossier courant.\n","orange")
         except socket.error as e:
             # gérer l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
@@ -972,7 +984,7 @@ def send_data(vpn_client,message,key):
     # print("nonce : ",nonce)
     # print("tag : ",tag)
     # print("ciphertext : ",ciphertext)
-    # print("TAILLE : ",len(data_serialized_obj))
+    print("TAILLE : ",len(data_serialized_obj))
     
     # print("LE HASH : ",hex_dig)
     
@@ -1064,7 +1076,8 @@ def sendFile(file,ip):
         if not recu : return False
 
         if recu == "GO": # Si le serveur accepte on envoi le fichier
-            #console.insert("end","[%H:%M] transfert en cours veuillez patienter...\n","orange")
+            if console.winfo_exists():
+                console.insert("end","Transfert en cours veuillez patienter...\n","orange")
             print("test 1")
             num = 0
             pourcent = 0
@@ -1129,6 +1142,7 @@ def sendFile(file,ip):
                         break  
                         
             else: # Sinon on envoi tous d'un coup
+                print("teste autre")
                 donnees = fich.read()
                 send_data(vpn_client,donnees,key_partaged)
                 add_data_upload(cursor,len(donnees),now) 
@@ -1136,7 +1150,8 @@ def sendFile(file,ip):
 
             fich.close()
             #time = datetime.datetime.now()
-            console.insert("end","Transfert du fichier terminé !\n","orange")
+            if console.winfo_exists():
+                console.insert("end","Transfert du fichier terminé !\n","orange")
             signal2 = "bye"
             #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
             send_data(vpn_client,signal2.encode(),key_partaged)
@@ -1147,7 +1162,8 @@ def sendFile(file,ip):
             print (time.strftime("\n--->Transfert du fichier annulé."))
             time = datetime.datetime.now()
             actuel_time = now.hour, ":", now.minute, ":", now.second
-            console.insert("end","Transfert du fichier annulé.\n","orange")
+            if console.winfo_exists():
+                console.insert("end","Transfert du fichier annulé.\n","orange")
             return "BYE"
 
 def ReceptionFile(key_partaged):
@@ -1326,16 +1342,21 @@ def add_data_upload(cursor,size_data,date):
     
     cursor.execute("SELECT som_up FROM trafic WHERE date = ?",(date,))
     result = cursor.fetchone()
-    
+    print(result)
     # Si la somme upload vaut 0
     if result == 0:
         # On ajoute juste la taille des données
         cursor.execute("UPDATE trafic SET som_up = ? WHERE date = ?", (size_data, date))
+        conn.commit()
+        print("j'ajoute")
+        
     else:
         # Sinon, on ajoute la taille des données à la somme déjà enregistré
         som = result[0] + size_data
+        print("j'ajoute")
         cursor.execute("UPDATE trafic SET som_up = ? WHERE date = ?", (som, date))
-        
+        conn.commit()
+
 def add_data_download(cursor,size_data,date):
     
     cursor.execute("SELECT som_down FROM trafic WHERE date = ?",(date,))
@@ -1345,11 +1366,13 @@ def add_data_download(cursor,size_data,date):
     if result == 0:
         # On ajoute juste la taille des données
         cursor.execute("UPDATE trafic SET som_down = ? WHERE date = ?", (size_data, date))
+        conn.commit()
     else:
         # Sinon, on ajoute la taille des données à la somme déjà enregistré
         som = result[0] + size_data
         cursor.execute("UPDATE trafic SET som_down = ? WHERE date = ?", (som, date))
-
+        conn.commit()
+    
 def initialise_trafic_reseau():
     global tab_trafic
     now = datetime.now()
@@ -1740,10 +1763,13 @@ cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KE
 # Si elle est vide => signifie que c'est la première connexion du client
 cursor.execute("SELECT COUNT(*) FROM trafic")
 result = cursor.fetchone()
+print("il y a connexion",result)
 if result[0] == 0:
     print("La table utilisateurs est vide. C'est la première connexion de l'utilisateur")
     cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
+    conn.commit()
 else:
+    print("pas premiere connexion")
     cursor.execute("SELECT COUNT(*) FROM trafic WHERE date=?",(now,))
     result = cursor.fetchone()
 
@@ -1753,6 +1779,7 @@ else:
     else:
         print("\nLe client s'est déjà connecté mais pas aujourd'hui")
         cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
+        conn.commit()
 
 bar0 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
 bar1 = canvas.create_rectangle(0,0,0,0,fill="grey")
@@ -1787,8 +1814,8 @@ if nb_ligne >=1:
     row0 = rows[0]
     pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
     pourcentage_down =  (row0[2]*100) / 1_500_000
-    som1 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
-    som2 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
+    som1 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size),560,fill="#a4c2f4")
+    som2 = canvas.create_rectangle((space_size) ,(560-(150*(pourcentage_up)/100)),(space_size+152),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
     date0 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
     space_size = space_size +65
     nb_ligne = nb_ligne -1
@@ -1922,3 +1949,4 @@ vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
 fenetre.mainloop()
+conn.close()

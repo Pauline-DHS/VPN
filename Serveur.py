@@ -130,7 +130,9 @@ def keyCalculated(server_private_key,client_public_key,p,g):
 def ReceptionFile(key_partaged):
     accepte = "non"
     num = 0
+    taille_bdd = 0
     pourcent = 0
+    flag = 0
     signal = "ok"
     global id_file
     
@@ -146,7 +148,7 @@ def ReceptionFile(key_partaged):
         
         # Recpetion du paquet    
         recu = recv_message(client_connection,key_partaged)
-        
+        print(recu)
         # Test la bonne reception du paquet
         if not recu : return False
         
@@ -204,11 +206,14 @@ def ReceptionFile(key_partaged):
         # Sinon on ecrit le paquet dans le fichier
         else: 
             f.write(recu)
+            taille_bdd = taille_bdd + len(recu)
+            
             
             # Récupération de l'ancien contenu de la colonne "file"
             #! Pour stocker le fichier dans la BDD il faut modifier le contenu de l'attribut "file" 
             #! à chaque réception d'un nouveau paquet auquelle on va concatener le paquet reçu et 
             #! modifier le contenu dans la BDD
+            
             c.execute("SELECT file FROM FICHIERS WHERE id=? AND source_ip=? AND destinataire_ip=? AND nom_file=?", (id+1,client_address[0], ip,nom_fichier))
             ancien_contenu = c.fetchone()[0]
             
@@ -218,8 +223,7 @@ def ReceptionFile(key_partaged):
             # Mis à jour de la colonne "file"
             c.execute("UPDATE FICHIERS SET file=? WHERE id=?  AND source_ip=? AND destinataire_ip=? AND nom_file=?", (nouveau_contenu, id+1,client_address[0], ip,nom_fichier))
             conn.commit()
-        
-            # Envoi d'un signal pour informer de la bonne reception du paquet
+            
             signal="ok"
             send_data(client_connection,signal.encode(),key_partaged)
             
@@ -255,6 +259,7 @@ def ReceptionFile(key_partaged):
                     pourcent = 9
                     
                 num = num + 1024
+    print("FIN : ",taille_bdd)
     return True
     
 #* Cette fonction permet d'ajouter la taille des données échanger à la somme totale sur la journée
