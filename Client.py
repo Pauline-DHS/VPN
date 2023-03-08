@@ -1,57 +1,65 @@
 # coding: utf-8
-from ctypes import pythonapi
-import warnings
-warnings.filterwarnings("ignore")
-from datetime import datetime
-import hashlib
 import os
-import pickle
+import sys
+import time
+import math
 import random
 import socket
 import struct
-import sys
-import threading
-import time
-import math
+import pickle
+import hashlib
 import sqlite3
+import warnings
 from tkinter import *
-from tkinter import messagebox
-from tkinter.ttk import Combobox 
 from PIL import Image,ImageTk
+from datetime import datetime
+from Crypto.Cipher import AES
+from tkinter import messagebox
 from tkinter import filedialog
+from Crypto.Hash import SHA256
+from tkinter.ttk import Combobox 
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
-from Crypto.Hash import SHA256
+warnings.filterwarnings("ignore")
 
 #?##########################################################################################################################################
 #?----------------------------------------------------------FONCTIONS INTERFACE------------------------------------------------------------#
 #?##########################################################################################################################################
+
+#* Cette fonction permet de retourner les informations de la fenêtre : hauteur, largeur, position en x,
+#* position en y
+#* Paramètre : g = la fenêtre
 def geoliste(g):
     r=[i for i in range(0,len(g)) if not g[i].isdigit()]
     return [int(g[0:r[0]]),int(g[r[0]+1:r[1]]),int(g[r[1]+1:r[2]]),int(g[r[2]+1:])]
 
+#* Cette fonction permet de centre la fenêtre
+#* Paramètre : fen = la fenêtre
 def centrefenetre(fen):
     fen.update_idletasks()
     l,h,x,y=geoliste(fen.geometry())
     fen.geometry("%dx%d%+d%+d" % (l,h,(fen.winfo_screenwidth()-l)//2,(fen.winfo_screenheight()-h)//2))
 
+#* Cette fonction permet d'avoir les informations sur la taille de la fenêtre
 def get_window_size():
     window_geometry = fenetre.winfo_geometry()
     width, height = window_geometry.split("x")[0], window_geometry.split("x")[1].split("+")[0]
     return width, height
 
+#* Cette fonction permet d'afficher une fenêtre pop-up avant de fermer la fenêtre
 def on_closing():
     if messagebox.askyesno("Fermteture de l'application", "Voulez-vous vraiment fermer l'application ? (Vous serez automiquement déconnecté du serveur)", 
                            icon="warning"):
         fenetre.destroy()
 
-# Fonction qui permet d'afficher les fichiers du dossier courant pour choisir celui qui va être envoyé
+#* Cette fonction permet d'afficher les fichiers du dossier courant pour choisir celui qui va être envoyé
 def send_file():
     filepath = filedialog.askopenfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
     return filepath
 
 ip_address = ""
 
+#* Cette fonction permet de récupérer la liste de contactes enregistrée dans la BDD
 def list_cont():
     cursor.execute("SELECT * FROM contacts ")
     rows = cursor.fetchall()
@@ -62,25 +70,38 @@ def list_cont():
         print(list)
     return list
 
+#* Cette fonction permet à l'utilisateur d'entrer le destinataire impliqué dans l'envoie d'un fichier
+#* Paramètre : file = fichier à envoyer
 def ip_window(file):
+    # Déclaration de la variable globale ip_address qui contiendra l'adresse IP du destinataire.
     global ip_address
+    
+    # Création d'une fenêtre enfant (Toplevel) qui va permettre à l'utilisateur d'entrer 
+    # l'adresse IP du destinataire.
     window_dest = Toplevel(fenetre)
     window_dest.geometry("300x100")
     window_dest.title("Destinataire")
     window_dest.resizable(False,False)
+    
+    # Centrage de la fenêtre sur l'écran.
     centrefenetre(window_dest)
 
     # Ajout d'un label pour l'adresse IP
     ip_label = Label(window_dest, text="Adresse IP:")
     ip_label.pack()
     
+    # Création d'une Combobox pour l'entrée de l'adresse IP.
     ip_entry = Combobox(window_dest)
     
+    # Récupération d'une liste d'adresses IP à partir de la fonction list_cont().
     list = list_cont()
-        
+    
+    # Ajout des valeurs de la liste dans la Combobox.
     ip_entry['values'] = list
     ip_entry.pack()
 
+    #* Définition de la fonction close() qui va récupérer l'adresse IP entrée par l'utilisateur 
+    #* et lancer la fonction sendFile() pour envoyer le fichier.
     def close():
         global ip_address
         ip_address = ip_entry.get()
@@ -89,26 +110,38 @@ def ip_window(file):
         window_dest.quit()
         sendFile(file,ip_address)
 
+    # Création d'un bouton pour valider l'adresse IP entrée par l'utilisateur.
     add_button = Button(window_dest, text="Valider", command=close)
     add_button.pack()
 
     # Démarrage de la boucle principale de la fenêtre
     window_dest.mainloop()
 
-
+#* Cette fonction permet d'ouvrir la console qui va contenir tous les messages et les statuts
+#* des différentes interaction avec le système
+#* Paramètre : connecte = statut du client (True connecté / False déconnecté)
 def open_console(connecte):
+    # Déclaration des variables globales console et console_window.     
     global console
     global console_window
+    
+    # Vérification si la fenêtre console_window existe déjà.
     if console_window.winfo_exists():
+        # Si elle existe, on la réactive.
         console_window.deiconify()
     else:
+        # Sinon, on crée une nouvelle fenêtre console_window.
         console_window = Toplevel(fenetre)
         console_window.title("Nouvelle fenêtre")
         console_window.geometry("600x300")
         centrefenetre(console_window)
         console_window.resizable(False,False)
         console_window.attributes("-topmost", True)
+        
+        # Création d'un widget Text pour afficher les messages dans la console.
         console = Text(console_window)
+        
+        # Configuration des couleurs des messages selon leur type.
         console.tag_config("red", foreground="red")
         console.tag_config("white", foreground="white")
         console.tag_config("green", foreground="green")
@@ -118,44 +151,58 @@ def open_console(connecte):
         console.pack()
         console.insert(INSERT, "Bienvenue dans la console\n","white")
         if connecte:
-            print("je susi connectée")
+            # Affichage d'un message de connexion si le client est connecté.
             console.insert("end","Connexion au serveur établie !\n","green")
         else:
-            print("je suis pas")
+            # Affichage d'un message de déconnexion si le client est déconnecté.
             console.insert("end","Vous n'êtes plus connecté au serveur.\n","red")
 
+#* Cette fonction permet d'afficher la liste des contacts enregistrée dans la BDD 
 def contacts():
+    # Création d'une nouvelle fenêtre pour afficher les contacts
     window_contact = Toplevel(fenetre)
     window_contact.geometry("300x400")
     window_contact.title("Contacts")
+    
+    # Création d'un nouveau frame pour afficher les détails des contacts
     details_contact = Frame(window_contact)
     details_contact.pack()
+    
+    # Exécution d'une requête SQL pour récupérer tous les contacts de la table "contacts"
     cursor.execute("SELECT * FROM contacts ")
     rows = cursor.fetchall()
+    
+    # Création d'un nouveau frame pour afficher la liste des contacts
     frame = Frame(window_contact,height=300)
     frame.pack(side="top",fill="both", expand=True)
     contact_list = Listbox(frame)
     
-    # Ajout d'une liste de mails
+    # Si la table "contacts" contient des données, les contacts sont ajoutés dans l'interface
     if len(rows) > 0:
-        # Ajout des contacts dans l'interface
         for row in rows:
             print(row)
             contact_list.insert(0, row[1]+" ("+row[0]+")")
-        
     else:
+        # Sinon, un message est affiché pour indiquer qu'il n'y a aucun contact enregistré
         details_label = Label(details_contact, text="Vous n'avez aucun contact.")     
-        details_label.pack()  
+        details_label.pack() 
+        
+    # Bouton pour ajouter un nouveau contact 
     add_button = Button(window_contact, text="Ajouter un contact", command=lambda :add_contact(window_contact))
     add_button.pack(side="bottom",pady=10)
     
+    # Affichage de la liste des contacts
     contact_list.pack(side="top",fill="both", expand=True)
 
+#* Cette fonction permet d'ajouter des contacts dans la liste de contacts en les enregistrant dans la BDD
+#* Paramètre : window_contact = fenêtre des contacts
 def add_contact(window_contact):
-    # Code pour ajouter un contact
+    # Création d'une nouvelle fenêtre pour ajouter un contact
     add_window = Toplevel(window_contact)
     add_window.geometry("300x200")
     add_window.title("Ajouter un contact")
+    
+     # Création des champs pour entrer l'IP et l'adresse
     ip_label = Label(add_window, text="IP :")
     ip_label.pack(pady=5)
     ip_entry = Entry(add_window)
@@ -165,21 +212,22 @@ def add_contact(window_contact):
     address_entry = Entry(add_window)
     address_entry.pack(pady=5)
     
+    #* Définition d'une fonction qui sera appelée lorsque l'utilisateur appuie sur le bouton "Ajouter"
     def close():
-        ip = ip_entry.get()
-        address = address_entry.get()
-        print(ip,address,type(ip))
-        cursor.execute("INSERT INTO contacts (ip,ad_mail) VALUES (?,?)", (ip, address))
-        conn.commit()
-        window_contact.update()
-        add_window.destroy()
+        ip = ip_entry.get() # Récupération de l'IP entrée par l'utilisateur
+        address = address_entry.get() # Récupération de l'adresse entrée par l'utilisateur
+        cursor.execute("INSERT INTO contacts (ip,ad_mail) VALUES (?,?)", (ip, address)) # Ajout de l'IP et de l'adresse dans la BDD
+        conn.commit() # Sauvegarde des modifications dans la BDD
+        window_contact.update() # Mise à jour de la fenêtre des contacts
+        add_window.destroy() # Fermeture de la fenêtre d'ajout de contact
     
+    # Création du bouton "Ajouter" qui appelle la fonction close() lorsqu'il est cliqué
     add_button = Button(add_window, text="Ajouter", command=close)
     add_button.pack(side="bottom",pady=10)
     
-            
-
+#* Cette fonction permet de gérer les mails reçus ainsi que l'envoie de message
 def send_mail():
+    # Création d'une nouvelle fenêtre pour gérer les mails
     window_send = Toplevel(fenetre)
     window_send.geometry("800x600")
     window_send.title("Envoi d'e-mail")
@@ -191,8 +239,8 @@ def send_mail():
     # Ajout d'une liste déroulante pour la destination de l'e-mail
     dest_entry = Combobox(window_send)
     
+    # Sotckage de la liste récupérer dans la BDD
     list = list_cont()
-    
     dest_entry['values'] = list
     dest_entry.grid(row=0, column=1, padx=10, pady=10)
 
@@ -212,37 +260,31 @@ def send_mail():
     body_text = Text(window_send)
     body_text.grid(row=2, column=1, padx=10, pady=10)
 
+    #* Définition d'une fonction pour écrire et envoyé un mail
     def send_msg():
         # Je récupère les valeurs des différents champs
         dest_value = dest_entry.get()
         sub_value = subject_entry.get()
         text_value = body_text.get("1.0", "end")
 
+        # J'envoie un signal pour indiquer au serveur que je vais envoyer un message
         signal = "reception msg"
-        #vpn_client.send(signal.encode())
         send_data(vpn_client,signal.encode(),key_partaged)
-        #rep = vpn_client.recv(1024)
         rep = recv_message(vpn_client,key_partaged)
         
+        # Si le serveur est prêt à recevoir le destinataire, j'envoie le destinataire
         if (rep.decode() == "ok"):
-            #dest_value = encrypt(dest_value,key_partaged)
-            #vpn_client.send(dest_value.encode())
             send_data(vpn_client,dest_value.encode(),key_partaged)
-            #rep = vpn_client.recv(1024)
             rep = recv_message(vpn_client,key_partaged)
         
+        # Si le serveur est prêt à recevoir l'objet, j'envoie l'objet
         if (rep.decode() == "ok"):
-            #sub_value = encrypt(sub_value,key_partaged)
-            #vpn_client.send(sub_value.encode())
             send_data(vpn_client,sub_value.encode(),key_partaged)
-            #rep = vpn_client.recv(1024)
             rep = recv_message(vpn_client,key_partaged)
         
+        # Si le serveur est prêt à recevoir le corps du message, j'envoie le corps du message
         if (rep.decode() == "ok"):
-            #text_value = encrypt(text_value,key_partaged)
-            #vpn_client.send(text_value.encode())
             send_data(vpn_client,text_value.encode(),key_partaged)
-            #rep = vpn_client.recv(1024)
             rep = recv_message(vpn_client,key_partaged)
         
         # Je ferme la fenetre
@@ -252,34 +294,41 @@ def send_mail():
     send_button = Button(window_send, text="Envoyer", command=send_msg)
     send_button.grid(row=3, column=1, padx=10, pady=10)
     
-    
-def open_mail(statut):
-    
+#* Cette fonction permet d'ouvrir les mails 
+def open_mail():
     global window_mail
     
+    # Vérifie si la fenêtre existe déjà et la déroule si c'est le cas
     if window_mail.winfo_exists():
         window_mail.deiconify()
     else:
+        # Sinon, crée une nouvelle fenêtre et configure ses propriétés
         window_mail = Toplevel(fenetre)
         window_mail.geometry("600x400")
         window_mail.title("Application Email")
         window_mail.resizable(False,False)
         centrefenetre(window_mail)
     
+    # Récupère les mails depuis la base de données
     cursor.execute("SELECT * FROM email_client ")
     rows = cursor.fetchall()
     
-    # Ajout des mails dans l'interface
+    # Ajoute les mails dans la liste de mails de l'interface
     for row in rows:
         print(row)
         mail_list.insert(0, row[1]+" ("+row[2]+")")
 
-        # Définition d'une fonction pour afficher les détails du mail sélectionné
+    #* Définition d'une fonction pour afficher les détails du mail sélectionné
     def display_details(event):
+        # Efface la notification en haut de l'écran lorsque l'utilisateur ouvre un mail
         canvas.coords(notif,0,0,0,0)
         fenetre.update()
         
+        # Récupère l'index du mail sélectionné
         index = mail_list.curselection()[0]
+        
+        # Efface le label des détails pour éviter des doublons et crée les labels pour chaque 
+        # détail du mail
         details_label.destroy()
         source_label = Label(details_frame, text="Source :")
         source_label.grid(row=0, column=0, padx=10, pady=10)
@@ -289,30 +338,34 @@ def open_mail(statut):
         subject_label.grid(row=1, column=0, padx=10, pady=10)
         subject = Label(details_frame, text=rows[index][2])
         subject.grid(row=1, column=1, padx=0, pady=10)
-
         text_label = Label(details_frame, text="Texte :")
         text_label.grid(row=2, column=0, padx=10, pady=10)
         text = Label(details_frame, text=rows[index][3])
         text.grid(row=2, column=1, padx=0, pady=10)
 
+        # Ajoute un bouton "Répondre" dans les détails du mail sélectionné et qui appelle 
+        # la fonction send_mail()
         reply_button = Button(details_frame, text="Répondre", command=send_mail)
         reply_button.grid(row=3, column=1, padx=10, pady=10)
 
 
-    # Liaison de la fonction à l'événement "selection" de la liste de mails
+    # Liaison de la fonction display_details() à l'événement "selection" de la liste de mails
     mail_list.bind("<<ListboxSelect>>", display_details)
     
+    # Ajoute une barre de menu à la fenêtre d'affichage des mails et définit les 
+    # commandes à exécuter pour chaque option du menu
     menu_bar = Menu(window_mail)
     window_mail.config(menu=menu_bar)    
-
     menu_bar.add_command(label="Contacts", command=contacts)
     menu_bar.add_command(label="Envoyer mail", command=send_mail)
     
-
+#* Cette fonction permet d'ajuster tous les éléments graphiques en fonction de la taille de la fenêtre
 def on_resize(event):
+    # Récupère la nouvelle taille de la fenêtre
     width = event.width
     height = event.height
     
+    # Ajuste l'image en arrière plan
     canvas.itemconfigure(img,width=width,height=height)
     
     # MODULE BOUTON ON OFF
@@ -526,17 +579,14 @@ def on_resize(event):
     canvas.itemconfigure(txt_point1, font=("Robot", int(9/630*height),"bold"))
     canvas.coords(txt_point2,750/1200*width, 385/630*height)
     canvas.itemconfigure(txt_point2, font=("Robot", int(9/630*height),"bold"))
-    
-    
     cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
     rows = cursor.fetchall()
     nb_ligne = len(rows)
     print(nb_ligne)
     space_size = 438 
-
     if nb_ligne >=1:
         row0 = rows[0]
-        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+        pourcentage_up =  (row0[1]*100) / 1_500_000 
         pourcentage_down =  (row0[2]*100) / 1_500_000
         canvas.coords(som1,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
         canvas.coords(som2,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
@@ -545,7 +595,7 @@ def on_resize(event):
         nb_ligne = nb_ligne -1
         if nb_ligne >= 1:
             row0 = rows[1]
-            pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+            pourcentage_up =  (row0[1]*100) / 1_500_000 
             pourcentage_down =  (row0[2]*100) / 1_500_000
             canvas.coords(som3,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
             canvas.coords(som4,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
@@ -554,7 +604,7 @@ def on_resize(event):
             nb_ligne = nb_ligne -1
             if nb_ligne >= 1:
                 row0 = rows[2]
-                pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                pourcentage_up =  (row0[1]*100) / 1_500_000 
                 pourcentage_down =  (row0[2]*100) / 1_500_000
                 canvas.coords(som5,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
                 canvas.coords(som6,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
@@ -563,7 +613,7 @@ def on_resize(event):
                 nb_ligne = nb_ligne -1
                 if nb_ligne >= 1:
                     row0 = rows[3]
-                    pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                    pourcentage_up =  (row0[1]*100) / 1_500_000 
                     pourcentage_down =  (row0[2]*100) / 1_500_000
                     canvas.coords(som7,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
                     canvas.coords(som8,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
@@ -572,7 +622,7 @@ def on_resize(event):
                     nb_ligne = nb_ligne -1
                     if nb_ligne >= 1:
                         row0 = rows[4]
-                        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                        pourcentage_up =  (row0[1]*100) / 1_500_000 
                         pourcentage_down =  (row0[2]*100) / 1_500_000
                         canvas.coords(som9,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
                         canvas.coords(som10,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
@@ -581,7 +631,7 @@ def on_resize(event):
                         nb_ligne = nb_ligne -1
                         if nb_ligne >= 1:
                             row0 = rows[5]
-                            pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                            pourcentage_up =  (row0[1]*100) / 1_500_000 
                             pourcentage_down =  (row0[2]*100) / 1_500_000
                             canvas.coords(som11,(space_size-7)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size)/1200*width,560/630*height)
                             canvas.coords(som12,(space_size)/1200*width ,(560-98*(pourcentage_up)/100)/630*height,(space_size+7)/1200*width,560/630*height)
@@ -595,74 +645,117 @@ def on_resize(event):
     canvas.coords(module6,299/1200*width, 330/630*height, 902/1200*width, 615/630*height)
     canvas.coords(DATA_txt,1077/1200*width, 345/630*height)
     canvas.itemconfigure(DATA_txt, font=("Robot", int(10/630*height),"bold"))
-    
-    
     canvas.coords(bouton1_mail2,995/1200*width,385/630*height,1035/1200*width,425/630*height)
     canvas.coords(bouton2_mail,995/1200*width, 380/630*height, 1035/1200*width, 420/630*height)
     canvas.coords(txt_mail,1014/1200*width, 400/630*height)
     canvas.itemconfigure(txt_mail,font=("Robot", int(25/630*height)))
     canvas.coords(dessin_mail,1005/1200*width, 388/630*height, 1024/1200*width, 412/630*height)
-    
     canvas.coords(notif,1016/1200*width, 385/630*height, 1026/1200*width, 395/630*height)
 
+
+#* Cette fonction permet de calculer le mouvement de l'aiguille
+#* Paramètres : speed = vitesse récupérer 
+#*              x_,y_,x1_,y1_ = position du rectangle qui représente l'aiguille
+#*              max = valeure maximum à laquelle le compteur peut aller 
 def update_speed(speed,x_,y_,x1_,y1_,aiguille,max):        
-    width, height = get_window_size()
+    # conversion de la vitesse en angle de l'aiguille
     angle = math.radians(speed * 270 / 100 + 155)
+    
+    # calcul des coordonnées de l'aiguille en fonction de l'angle
     x = x_+ 55 * math.cos(angle)
     y = y_ + 55 * math.sin(angle)
     x1 = x1_ + 20* math.cos(angle)
     y2 = y1_ + 20 * math.sin(angle)
+    
+    # récupération de la taille de la fenêtre et redimensionnement des coordonnées en conséquence
+    width, height = get_window_size()
     width = int(width)
     height = int(height)
     canvas.coords(aiguille, int(x1)/1200*width, int(y2)/630*height, int(x)/1200*width, int(y)/630*height)
 
-
+#* Cette fonction permet de modifier la position de l'aiguille et lui donner une impression de mouvement
+#* Paramètres : X = vitesse récupérer 
+#*              x,y,x1,y1 = position du rectangle qui représente l'aiguille
+#*              speed_txt = texte qui indique la vitesse
+#*              aiguille  = élément du canvas qui réference le rectangle de l'aiguille
 def compteur(X,x,y,x1,y1,speed_txt,aiguille):
     current_speed = 0
     if X > 100:
         X = 100
     # Boucle pour parcourir toutes les valeurs de vitesse
     while True:
+        # Met à jour la position de l'aiguille pour refléter la vitesse actuelle
         update_speed(current_speed,x,y,x1,y1,aiguille,X)
+        # Met à jour l'affichage de la fenêtre
         fenetre.update()
+        # Met à jour le texte pour afficher la vitesse actuelle
         canvas.itemconfigure(speed_txt, text=current_speed)
+        # Augmente la vitesse actuelle de 1
         current_speed +=1
+        # Pause d'une petite fraction de seconde pour créer une animation fluide
         time.sleep(1/100)
+        
+         # Si la vitesse actuelle est égale à la vitesse maximale, commence à décrémenter jusqu'à la vitesse X
         if current_speed == 100:
             while current_speed != X:
+                # Décrémente la vitesse actuelle de 1
                 current_speed -=1
+                # Met à jour la position de l'aiguille pour refléter la nouvelle vitesse actuelle
                 update_speed(current_speed,x,y,x1,y1,aiguille,X)
+                # Met à jour le texte pour afficher la nouvelle vitesse actuelle
                 canvas.itemconfigure(speed_txt, text=current_speed)
+                # Pause d'une petite fraction de seconde pour créer une animation fluide
                 time.sleep(1/100)
+                # Met à jour l'affichage de la fenêtre
                 fenetre.update()
+            # Sort de la boucle while si la vitesse actuelle est égale à la vitesse X
             break  
 
-###########################################################################################################################################
-#-----------------------------------------------INTERACTION AVEC LE SERVEUR VIA L'INTERFACE-----------------------------------------------#
-###########################################################################################################################################
+#?##########################################################################################################################################
+#?-----------------------------------------------INTERACTION AVEC LE SERVEUR VIA L'INTERFACE-----------------------------------------------#
+#?##########################################################################################################################################
+
+#* Cette fonction permet de gérer les interaction entre l'utilisateur et le système
+#* Paramètre : event = les coordonnées du clique de la souris
 def clicked (event) :
-    global statut
-    global jeton
-    global premier_connexion
     global compt
-    global console_window
+    global jeton
+    global statut
     global console
-    width, height = get_window_size()
-    width = int(width)
-    height = int(height)
     global connecte 
     global ip_address
     global key_partaged
-    print (f'You clicked at {event.x} X {event.y}.')
+    global console_window
+    global premier_connexion
+    
+    # On recupère la taille actuelle de la fenêtre pour dessiner les éléments nécessaire à la bonne proportion
+    # mais aussi pour tester le clique propotionnelement si la fenêtre a été agrandie ou rétréci
+    width, height = get_window_size()
+    width = int(width)
+    height = int(height)
+    
+    #! Tous les tests sont effectués par rapport aux coordonnées du clique 
+    
+    # BOUTON CONNEXION 
     if 65/1200*width < event.x < 165/1200*width and 65/630*height < event.y < 165/630*height and statut == 0:
+        # Si c'est la première connexion de l'utilisateur après avoir lancé le programme
         if premier_connexion == 0:
+            
+            # Simple connexion au serveur
             connecte = connexion(host,port)
             
+            # Si la connection a réussi 
             if connecte:
+                
+                # Modification des éléments du canvas pour le bouton ON/OFF
                 canvas.itemconfigure(bouton_module1_3,fill="green")
                 canvas.itemconfigure(dessin_ON_OFF_module1,fill="green")
                 canvas.itemconfigure(txt_module1, text='Connecté')
-                key_partaged = Diffie_Hullman_Key()
+                
+                # Echange des clés avec la fonction Diffie-Hellman
+                key_partaged = Diffie_Hellman_Key()
+                
+                # Vérifiaction de la signature
                 rep = verif_Signature(key_partaged)
                 if rep :
                     Signature(key_partaged)
@@ -676,27 +769,64 @@ def clicked (event) :
                         console.insert("end","La signature n'est pas validée, votre connexion n'est pas sécurisée !\n","red")
                     deconnexion()
                     return False
-        else:
+        else: 
+            # Si ce n'est pas la premiere connexion lance la fonction reconnection
             connecte = reconnection(host,port)
+            
+            # Si la reconnexion s'est bien passée
             if connecte:
+                
+                # Modification des éléments du canvas pour le bouton ON/OFF
                 canvas.itemconfigure(bouton_module1_3,fill="green")
                 canvas.itemconfigure(dessin_ON_OFF_module1,fill="green")
                 canvas.itemconfigure(txt_module1, text='Connecté')
-                key_partaged = Diffie_Hullman_Key()
+                
+                # Echange des clés avec la fonction Diffie-Hellman
+                key_partaged = Diffie_Hellman_Key()
                 console.insert("end","Les clés ont bien été échangées !\n","green")
+                
+                # Vérifiaction de la signature
+                rep = verif_Signature(key_partaged)
+                if rep :
+                    Signature(key_partaged)
+                    if console_window.winfo_exists():
+                        if console.winfo_exists():
+                            console.insert("end","Les clés ont bien été échangées !\n","green")
+                    premier_connexion =  1
+                    statut = 1
+                else:
+                    if console.winfo_exists():
+                        console.insert("end","La signature n'est pas validée, votre connexion n'est pas sécurisée !\n","red")
+                    deconnexion()
+                    return False
                 statut =1
-            
+    
+    # BOUTON DECONNEXION        
     elif 65/1200*width < event.x < 165/1200*width and 65/630*height < event.y < 165/630*height and statut == 1:
+        
+        # Mise à jour des différents flags
         statut = 0
+        connecte = 0
+        
+        # Modification des éléments du canvas pour le bouton ON/OFF
         canvas.itemconfigure(bouton_module1_3,fill="red")
         canvas.itemconfigure(dessin_ON_OFF_module1,fill="red")
         canvas.itemconfigure(txt_module1, text='Déconnecté')
-        connecte = 0
+        
+        # Message console
         if console_window.winfo_exists(): 
             console.insert("end","Vous n'êtes plus connecté au serveur.\n","red")
+        
+        # Lancement de la fonction deconnexion
         deconnexion()
+        
+    # SPEEDTEST DOWNLOAD
     elif 388/1200*width < event.x< 506/1200*width and 268/630*height < event.y< 298/630*height and jeton == 0:
-        jeton = 1
+        
+        # Mise à jour des différents flags
+        jeton = 1 # permet de bloquer l'exécution uniquement sur ce speedtest
+        
+        # Modification des éléments du canvas pour le bouton du speedtest download
         canvas.coords(bouton_down_rond2,401/1200*width, 272/630*height, 426/1200*width, 293/630*height)
         canvas.coords(bouton_down_rond3,465/1200*width, 272/630*height, 490/1200*width, 293/630*height)
         canvas.coords(bouton_down2,412/1200*width, 272/630*height, 478/1200*width, 293/630*height)
@@ -713,18 +843,37 @@ def clicked (event) :
         canvas.coords(trait_4,412/1200*width, 267/630*height, 478/1200*width, 267/630*height)
         canvas.coords(trait_6,412/1200*width, 288/630*height, 478/1200*width, 288/630*height)
         fenetre.update()
+        
+        # Si le client est connecté
         if connecte:
+            
+            # Lancement du speedtest
             speed = speedTestDownload(vpn_client)
+            
+            # Message console 
             if console.winfo_exists():
                 console.insert("end","Débit de transmission en download: "+str(speed)+" Mbps.\n","blue")
+                
+            # Mise en route du compteur pour l'animation
             compteur(speed,448,168,448,168,speed_txt_down,aiguille_down)  
         else:
+            # Si le client n'est pas connecté il ne peut pas faire de speedtest 
+            # Fenêtre pop-up erreur
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour lancer des tests.")
+            
+            # Message console 
             if console.winfo_exists():
                 console.insert("end","Vous devez être connecté au serveur pour lancer des tests.\n","red")
-        jeton = 0
+        # Mise à jour des différents flags
+        jeton = 0 # relache la priorité
+        
+    # SPEEDTEST DOWNLOAD    
     elif 710/1200*width < event.x< 823/1200*width and 270/630*height < event.y< 295/630*height and jeton == 0:
+        
+        # Mise à jour des différents flags
         jeton = 1
+        
+        # Modification des éléments du canvas pour le bouton du speedtest upload
         canvas.coords(bouton_up1,721/1200*width, 272/630*height, 746/1200*width, 293/630*height)
         canvas.coords(bouton_up2_,785/1200*width, 272/630*height, 810/1200*width, 293/630*height)
         canvas.coords(bouton_up3,732/1200*width, 272/630*height, 798/1200*width, 293/630*height)
@@ -740,17 +889,36 @@ def clicked (event) :
         canvas.coords(trait_7,732/1200*width, 267/630*height, 798/1200*width, 267/630*height)
         canvas.coords(trait_8,732/1200*width, 288/630*height, 798/1200*width, 288/630*height)
         fenetre.update()
+        
+        # Si le client est connecté
         if connecte:
+            
+            # Lancement du speedtest
             speed = speedTestUpload(vpn_client)
+            
+            # Message console 
             if console.winfo_exists():
                 console.insert("end","Débit de transmission en upload: "+str(speed)+" Mbps.\n","blue")
+                
+            # Mise en route du compteur pour l'animation
             compteur(speed,768,168,768,168,speed_txt_up,aiguille_up)
         else:
+            
+            # Si le client n'est pas connecté il ne peut pas faire de speedtest 
+            # Fenêtre pop-up erreur
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour lancer des tests.")
+            
+            # Message console 
             if console.winfo_exists():
                 console.insert("end","Vous devez être connecté au serveur pour lancer des tests.\n","red")
+        
+        # Mise à jour des différents flags
         jeton = 0
+        
+    # BOUTON ENVOIE DE FICHIER    
     elif 1020/1200*width < event.x< 1131/1200*width and 266/630*height < event.y< 300/630*height:
+        
+        # Modification des éléments du canvas pour le bouton pour envoyer un fichier 
         canvas.coords(bouton_send_rond,1002/1200*width, 270/630*height, 1050/1200*width, 305/630*height)
         canvas.coords(bouton_send_rond2,1102/1200*width, 270/630*height, 1150/1200*width, 305/630*height)
         canvas.coords(bouton_send1,1020/1200*width, 271/630*height, 1131/1200*width, 305/630*height)
@@ -766,13 +934,25 @@ def clicked (event) :
         canvas.coords(trait_1,1020/1200*width, 265/630*height, 1131/1200*width, 265/630*height)
         canvas.coords(trait_2,1020/1200*width, 300/630*height, 1131/1200*width, 300/630*height)
         fenetre.update()
+        
+        # Si le client est connecté 
         if connecte :
+            
+            # Lancement du processus pour envoyer un fichier 
             file=send_file()
             ip_address = ip_window(file)
             
-        else:
+        else: # Sinon fenêtre pop-up d'erreur
             messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour envoyé des fichiers.")
+            
+            # Message console   
+            if console.winfo_exists():
+                console.insert("end","Vous devez être connecté au serveur pour ouvrir cette application.\n","red")
+            
+    # BOUTON OUVRIR CONSOLE        
     elif 50/1200*width < event.x< 185/1200*width and 581/630*height < event.y< 605/630*height:
+        
+        # Modification des éléments du canvas pour le bouton pour envoyer un fichier 
         canvas.coords(bouton_console_rond_,50/1200*width, 581/630*height, 75/1200*width, 605/630*height)
         canvas.coords(bouton_console_rond2_,160/1200*width, 581/630*height, 185/1200*width, 605/630*height)
         canvas.coords(bouton_console,61/1200*width, 582/630*height, 175/1200*width, 605/630*height)
@@ -788,8 +968,14 @@ def clicked (event) :
         canvas.coords(trait_10,61/1200*width, 576/630*height, 175/1200*width, 576/630*height)
         canvas.coords(trait_11,61/1200*width, 600/630*height, 175/1200*width, 600/630*height)
         fenetre.update()
+        
+        # Lancement de la fonction pour ouvrir la console (pas besoin d'être connecté)
         open_console(connecte)
+        
+    # BOUTON OUVRIR MAIL
     elif 995/1200*width < event.x < 1035/1200*width and 380/630*height < event.y < 420/630*height:
+        
+        # Modification des éléments du canvas pour le bouton pour ouvrir la boite mail
         canvas.coords(bouton1_mail2,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(bouton2_mail,995/1200*width,385/630*height,1035/1200*width,425/630*height)
         canvas.coords(txt_mail,1014/1200*width,405/630*height)
@@ -800,139 +986,159 @@ def clicked (event) :
         canvas.coords(bouton2_mail,995/1200*width,380/630*height,1035/1200*width,420/630*height)
         canvas.coords(txt_mail,1014/1200*width,400/630*height)
         canvas.coords(dessin_mail,1005/1200*width,388/630*height,1024/1200*width,412/630*height)
+        
+        # Si le client est connecté 
         if connecte :
-            open_mail(0)
-        else:
-            messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour ouvrir cette application.")     
+            
+            # Lancement de la fonction pour ouvrir la boite mail 
+            open_mail()
+            
+        else: # Sinon fenêtre pop-up d'erreur 
+            messagebox.showerror("Erreur", "Vous devez être connecté au serveur pour ouvrir cette application.")   
+            
+            # Message console   
             if console.winfo_exists():
                 console.insert("end","Vous devez être connecté au serveur pour ouvrir cette application.\n","red")
     
+    #* PROCESSUS DE RECUPERATION DE MAILS EN RECEPTIONS
     if connecte:    
         try:
-            # vérifier l'état du socket
+            # Vérifier l'état du socket
             error = vpn_client.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if error != 0:
                 raise socket.error(error)
             
-            # envoyer un paquet de données au serveur
+            # Envoyer un paquet de données au serveur
             signal = "recv msg ok"
-            #vpn_client.send(signal.encode())
             send_data(vpn_client,signal.encode(),key_partaged)
             
-            #nb_msg = vpn_client.recv(1024)
+            # Reçoit le nombre de message en attente côté serveur
             nb_msg = recv_message(vpn_client,key_partaged)
             nb_msg = nb_msg.decode()
+            
+            # Si il y a au moins un message 
             if nb_msg != "0":
+                
+                # Message console
                 if console.winfo_exists():
                     console.insert("end","il y a ",nb_msg.decode()," message(s) en attente(s)...\n","orange")
             
-            if (int(nb_msg) == 0):
+            # S'il n'y a aucun message 
+            if nb_msg == "0":
+                
+                # Envoi un signal spécifique pour annuler la reception de quelconque message
                 signal = "no"
-                #vpn_client.send(signal.encode())
                 send_data(vpn_client,signal.encode(),key_partaged)
-            else:
+                
+            else: 
+                # Modification des éléments du canvas pour le bouton pour envoyer un fichier 
                 canvas.coords(notif,1016/1200*width, 385/630*height, 1026/1200*width, 395/630*height)
                 canvas.itemconfigure(notif,fill="red",width=1)
                 fenetre.update()
                 
+                # Envoi d'un signal spécifique pour continuer le processus et recevoir le/les messages
                 signal = "yes"
-                #vpn_client.send(signal.encode())
                 send_data(vpn_client,signal.encode(),key_partaged)
                 
                 signal = "ok"
+                # Repète le processus autant de fois qu'il y a de messages
                 for i in range(int(nb_msg)):
-                    print("je suis dans le for et j'attends")
-                    #source = vpn_client.recv(1024)
+                    
+                    # Reception de la source
                     source = recv_message(vpn_client,key_partaged)
-                    print("j'ai recu")
-                    #source = decrypt(source.decode(),key_partaged)
-                    print("Le destinataire décrypté est : ",source)
-                    #vpn_client.send(signal.encode())
                     send_data(vpn_client,signal.encode(),key_partaged)
                     
-                    #subject = vpn_client.recv(1024)
+                    # Reception du sujet du mail
                     subject = recv_message(vpn_client,key_partaged)
-                    #subject = decrypt(subject.decode(),key_partaged)
-                    print("Le subject décrypté est : ",subject)
-                    #vpn_client.send(signal.encode())
                     send_data(vpn_client,signal.encode(),key_partaged)
                     
-                    #text = vpn_client.recv(1024)
+                    # Reception du corps du message
                     text = recv_message(vpn_client,key_partaged)
-                    #text = decrypt(text.decode(),key_partaged)
-                    print("Le text décrypté est : ",text)
-                    #vpn_client.send(signal.encode())
                     send_data(vpn_client,signal.encode(),key_partaged)
                     
+                    # Recupère le nombre de message déjà présent dans la BDD pour calculer l'id de prochain
                     cursor.execute('SELECT COUNT(*) FROM email_client')
                     resultat = cursor.fetchone()
                     
+                    # Si il n'y a aucun message dans la BDD
                     if (resultat[0] == 0):
-                        print("y a aucun message archiver")
                         last_id = 0
                     else:
-                        print("y a déjà des msg avant")
+                        
+                        # On prend l'id max 
                         cursor.execute("SELECT MAX(id) FROM email_client")
                         last_id = cursor.fetchone()[0]
                         
-                    # Add a new email to the email_client table
+                    # Ajout du message dans la BDD
                     cursor.execute("""INSERT INTO email_client (id,source, subject, text) VALUES (?, ?, ?, ?,?)""", 
                                 (last_id+1,source.decode(), subject.decode(), text.decode(),False))
                     conn.commit()
-                    #open_mail(1,window_mail)
-                    cursor.execute('SELECT * FROM email_client')
-                    rows = cursor.fetchall()
-
-                    # Affichage des lignes
-                    print('Contenu de la table "email_client":')
-                    for row in rows:
-                        print("\'",row,"\'")
+                    
+                # Message console
                 if console.winfo_exists():        
                     console.insert("end","Les messages ont bien été reçus, vous pouvez les consulter dans voitre boite mail.\n","orange")
+        
         except socket.error as e:
-            # gérer l'erreur si la connexion est interrompue
+            # Gestion de l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
     
+    #* PROCESSUS DE RECUPERATION DE FICHIERS EN RECEPTIONS
     if connecte:
         try:
-            # vérifier l'état du socket
+            # Vérifier l'état du socket
             error = vpn_client.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if error != 0:
                 print("je suis deco")
                 raise socket.error(error)
             
-            # envoyer un paquet de données au serveur
+            # Envoyer un paquet de données au serveur
             signal = "recv file ok"
-            
             send_data(vpn_client,signal.encode(),key_partaged)
             
-            #nb_msg = vpn_client.recv(1024)
+            # Recption du nombre de fichier stocké en BDD côté serveur
             nb_file = recv_message(vpn_client,key_partaged)
-            print("il y a ",nb_file.decode()," file")
             nb_file = nb_file.decode()
+            
+            # S'il y a au moins un fichier 
             if nb_file != "0":
+                
+                # Message console
                 if console.winfo_exists():
                     console.insert("end","il y a ",nb_file.decode()," fichier(s) en attente(s)...\n","orange")
+            
+            # S'il n'y a pas de fichier        
             if nb_file == "0":
+                
+                # Envoie d'un signal pour sortir du processus 
                 signal = "no"
                 send_data(vpn_client,signal.encode(),key_partaged)
             else:
+                
+                # Envoie d'un signal pour continuer le processus et recuperer les fichiers
                 signal = "oui"
                 send_data(vpn_client,signal.encode(),key_partaged)
                 
+                # ON repète ce processus autant de fois qu'il y a de fichiers à recevoir
                 for i in range(int(nb_file)):
+                    
+                    # Lancement de la fonction pour recevoir le fichier
                     rep = ReceptionFile(key_partaged)
+                    
+                # Message console 
                 if console.winfo_exists():
                     console.insert("end","Les fichiers ont bien été reçus, vous pouvez les retrouver dans le dossier courant.\n","orange")
+        
         except socket.error as e:
-            # gérer l'erreur si la connexion est interrompue
+            # Gestion de l'erreur si la connexion est interrompue
             print("La connexion a été interrompue. Erreur :", e)
-    
-            
+               
 
-###########################################################################################################################################
-#------------------------------------------------------------FONCTIONS BACKEND------------------------------------------------------------#
-###########################################################################################################################################
+#?##########################################################################################################################################
+#?------------------------------------------------------------FONCTIONS BACKEND------------------------------------------------------------#
+#?##########################################################################################################################################
+
+#* Cette fonction permet de convertir une chaine binaire en entier et retourne cet entier
+#* Paramètre : binary = chaine binaire à convertir
 def binary2int(binary):
     binary = int(binary)
     int_val, i, n = 0,0,0
@@ -943,6 +1149,8 @@ def binary2int(binary):
         i += 1
     return int_val
 
+#* Cette fonction permet de convertir un entier en une chaine binaire et retourne cette chaine
+#* Paramètre : n = entier à convertir 
 def int2binary(n):
     "Convertit un nombre en binaire"
     if n == 0: 
@@ -951,58 +1159,59 @@ def int2binary(n):
     while n != 0: n, res = n >> 1, repr(n & 1) + res
     return res  
 
-from Crypto.Cipher import AES
-
+#* Cette fonction permet de chiffrer des données avec l'algorithme AES
+#* Paramètres : message = texte à chiffrer
+#*              key = clé à utiliser pour le chiffrement
+#! La clé de chiffrement doit être d'une taille de 16 caractères
 def encrypt(message,key):
-    #print("key : ",key)
-    #print("je suis dans la fonction pour encrypter")
-    #print(key)
     cipher = AES.new(key, AES.MODE_EAX)
-    #print("test 1")
     ciphertext, tag = cipher.encrypt_and_digest(message)
-    #print("J'ai encrypter le message")
     return (cipher.nonce, tag, ciphertext)
 
+
+#* Cette fonction permet d'envoyer des données à un client en les chiffrants
+#* Paramètres : vpn_client = socket de connexion du client à qui sont envoyées les données
+#*              message = texte à envoyer (pas encore chiffré)
+#*              key = clé à utiliser pour le chiffrement
 def send_data(vpn_client,message,key):
-    # print("message à envoyer : ",message)
+    
+    # Chiffrement du message
     nonce, tag, ciphertext = encrypt(message,key)
-    # print("taille nonce : ",len(nonce))
-    # print("taille tag : ",len(tag))
-    # print("taille ciphertext : ",len(ciphertext))
+    
     # Hachage en SHA-256
     hash_object = hashlib.sha256(message)
 
     # Convertir le hash en hexadécimal
     hex_dig = hash_object.hexdigest()
     
-    # je stocke les données à envoyer dans un objet pour facilité l'échange
+    # Stockage des données à envoyer dans un objet pour faciliter l'échange
     data_obj = {"nonce":nonce, "tag":tag, "msg":ciphertext,"hash":hex_dig}
     
-    # Je serialize l'objet avant de l'envoyer 
+    # Serialization de l'objet qui contient les info à envoyer
     data_serialized_obj = pickle.dumps(data_obj,protocol=4)
     
-    # print("nonce : ",nonce)
-    # print("tag : ",tag)
-    # print("ciphertext : ",ciphertext)
-    print("TAILLE : ",len(data_serialized_obj))
-    
-    # print("LE HASH : ",hex_dig)
-    
+    # Envoie
     vpn_client.sendall(data_serialized_obj)
-    
+
+#* Cette fonction permet de déchiffrer une donnée chiffré par la fonction "encrypt()"
+#* Paramètres : key = clé partagé pour le chiffrement
+#*              nonce, tag = nonce et tag utilisés lors du chiffrement des données
+#*              ciphertext = texte à déchiffrer    
 def decrypt(key, nonce, tag, ciphertext):
     cipher = AES.new(key, AES.MODE_EAX, nonce)
     plaintext = cipher.decrypt_and_verify(ciphertext, tag)
     print("message recu : ",plaintext)
     return plaintext
 
+#* Cette fonction permet de recevoir des données et de les déchiffrer
+#* Paramètres : client_connection = socket de connexion du client duquel sont reçues les données
+#*              key = clé à utiliser pour le déchiffrement
 def recv_message(client_connection,key):
     
+    # Reception du paquet
     data_obj = client_connection.recv(1024)
-
-    # print("OBJET À DESERIALIZER : ",data_obj)
-    # print("TAILLE: ",len(data_obj))
     
+    # Déserialization du paquet
     data_obj_deserialized = pickle.loads(data_obj)
     
     # Récupérer les données dans différentes variables
@@ -1010,195 +1219,243 @@ def recv_message(client_connection,key):
     tag = data_obj_deserialized["tag"]
     msg = data_obj_deserialized["msg"]
     hash = data_obj_deserialized["hash"]
-    #nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
-    # print("nonce : ",nonce)
-    # print("tag : ",tag)
-    # print("ciphertext : ",ciphertext)
-    
+   
+   # Déchiffrement du message
     msg = decrypt(key,nonce,tag,msg)
     
-     # Hachage en SHA-256
+    # Hachage en SHA-256
     hash_object = hashlib.sha256(msg)
 
-    # Convertir le hash en hexadécimal
+    # Convertion du hash en hexadécimal
     hex_dig = hash_object.hexdigest()
-    # print("LE HASH : ",hex_dig)
+    
+    #! Test d'intégrité du hash
     if hex_dig != hash:
         print("Problème d'intégrité ! Les données ont pu être modifié au cours du transfère")
     return msg
 
-
+#* Cette fonction permet de calculer la clé partagé 
+#* Paramètres : server_private_key = clé privé du serveur
+#*              client_public_key = clé publique du client
+#*              p, g = paramètres de Diffie Hellman
 def keyCalculated(client_private_key,server_public_key,p,g):
     return server_public_key ** client_private_key % p
 
-def sendFileQuery():
-    signal = "send file"
-    vpn_client.send(signal.encode()) # Envoi du nom et de la taille du fichier
-    add_data_upload(cursor,len(signal.encode()),now)
-    tmp = vpn_client.recv(1024)
-    add_data_download(cursor,len(tmp),now)
-    recu = tmp.decode() 
-    
-    return recu
-       
+#* Cette fonction permet d'envoi un fichier plus ou moins lourds
+#* Paramètres : name_file = nom du fichier à envoyer 
+#*              file = fichier à envoyer
+#*              ip = adresse ip du client à qui envoyer le fichier
 def sendFile(file,ip):  
     global console
     global console_window
     i = 1
+    
+    # Envoie d'un premier signal pour annoncé que la fonction est lancé
     signal = "send file"
     send_data(vpn_client,signal.encode(),key_partaged)
+    
+    # Ajout de la taille des données pour le diagramme
     add_data_upload(cursor,len(signal.encode()),now)
     
+    # Envoie d'un signal pour me dire que le client est prêt à recevoir les paquets
     rep = recv_message(vpn_client,key_partaged)
     
     # Définissions de la taille du fichier
     octets = os.path.getsize(file) / 870
-    print("nombre d'octets :", octets)
     
     # Envoie de l'adresse IP
     send_data(vpn_client,ip.encode(),key_partaged)
     
     # Vérifiaction des informations
     print ("\n---> Fichier à envoyer : '" + file + "' [" + str(octets) + " Ko]")
-    #console.insert("end","Fichier à envoyer : " + file + " [" + str(octets) + " Ko]\n","orange")
+    
+    # Message console
+    console.insert("end","Fichier à envoyer : " + file + " [" + str(octets) + " Ko]\n","orange")
+    
+    # Sotckage du nom du fichier (extrait de chemin courant reçu)
     tmp = "NAME " + file + "OCTETS " + str(octets)
-    #vpn_client.send(tmp.encode()) # Envoi du nom et de la taille du fichier
+    
+    # Envoie des informations du fichiers qui va être envoyé
     send_data(vpn_client,tmp.encode(),key_partaged)
+    
+    # Ajout de la taille des données pour le diagramme
     add_data_upload(cursor,len(tmp.encode()),now) 
+    
+    
     while (vpn_client.connect):
-        # print("j'attend")
-        #tmp = vpn_client.recv(1024)
         tmp = recv_message(vpn_client,key_partaged)
-        print(tmp)
-        print("j'ai reçu")
         add_data_download(cursor,len(tmp),now)
         recu = tmp.decode() 
         if not recu : return False
 
-        if recu == "GO": # Si le serveur accepte on envoi le fichier
+        # Si le serveur accepte on envoi le fichier
+        if recu == "GO": 
+            
+            # Message console
             if console.winfo_exists():
                 console.insert("end","Transfert en cours veuillez patienter...\n","orange")
-            print("test 1")
+            
             num = 0
             pourcent = 0
-            octets = octets * 870 # Reconverti en octets
+            octets = octets * 870 
             fich = open(file, "rb")
             remaining_data = octets
-            if octets > 870:	# Si le fichier est plus lourd que 1024 on l'envoi par paquet
-                print("test 2")
-                for i in range(int(octets / 870)+1):       
-                    print("test 3") 
+            
+            # Si le fichier est plus lourd que 1024 on l'envoi par paquet
+            if octets > 870:	
+                for i in range(int(octets / 870)+1):    
                     if remaining_data > 870:
-                        print("test 4")
-                        fich.seek(num, 0) # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
-                        donnees = fich.read(870) # Lecture du fichier en 1024 octets    
-                        print("Donné à envoyé : ",donnees)       
-                        #vpn_client.send(donnees) # Envoi du fichier par paquet de 1024 octets
-                        #encoded_message = donnees.encode('utf-16-le')
+                        
+                        # on se deplace par rapport au numero de caractere (de 1024 a 1024 octets)
+                        fich.seek(num, 0) 
+                        
+                        # Lecture du fichier en 1024 octets    
+                        donnees = fich.read(870) 
+                        print("Donné à envoyé : ",donnees)   
+                        
+                        # Envoi du fichier par paquet de 1024 octets
                         send_data(vpn_client,donnees,key_partaged)
                         
-                        print("jai encoyé un paquet")
-                        #rep=vpn_client.recv(1024)
-                        rep = recv_message(vpn_client,key_partaged)
-                        print("JE PEUX CONTINUER")
+                        # Reception du signal pour continuer
+                        recv_message(vpn_client,key_partaged)
+                        
+                        # Ajout de la taille des données pour le diagramme
                         add_data_upload(cursor,len(donnees),now) 
                         num = num + 870
                         remaining_data -= 870
                 
                         # Condition pour afficher le % du transfert (pas trouve mieu) :
                         if pourcent == 0 and num > octets / 100 * 10 and num < octets / 100 * 20:
-                            print (" -> 10%")
+                            if console.winfo_exists():
+                                console.insert("end","10%\n","orange")
                             pourcent = 1
                         elif pourcent == 1 and num > octets / 100 * 20 and num < octets / 100 * 30:
-                            print (" -> 20%")
+                            if console.winfo_exists():
+                                console.insert("end","20%\n","orange")
                             pourcent = 2
                         elif pourcent < 3 and num > octets / 100 * 30 and num < octets / 100 * 40:
-                            print (" -> 30%")
+                            if console.winfo_exists():
+                                console.insert("end","30%\n","orange")
                             pourcent = 3
                         elif pourcent < 4 and num > octets / 100 * 40 and num < octets / 100 * 50:
-                            print (" -> 40%")
+                            if console.winfo_exists():
+                                console.insert("end","40%\n","orange")
                             pourcent = 4
                         elif pourcent < 5 and num > octets / 100 * 50 and num < octets / 100 * 60:
-                            print (" -> 50%")
+                            if console.winfo_exists():
+                                console.insert("end","50%\n","orange")
                             pourcent = 5
                         elif pourcent < 6 and num > octets / 100 * 60 and num < octets / 100 * 70:
-                            print (" -> 60%")
+                            if console.winfo_exists():
+                                console.insert("end","60%\n","orange")
                             pourcent = 6
                         elif pourcent < 7 and num > octets / 100 * 70 and num < octets / 100 * 80:
-                            print (" -> 70%")
+                            if console.winfo_exists():
+                                console.insert("end","70%\n","orange")
                             pourcent = 7
                         elif pourcent < 8 and num > octets / 100 * 80 and num < octets / 100 * 90:
-                            print (" -> 80%")
+                            if console.winfo_exists():
+                                console.insert("end","80%\n","orange")
                             pourcent = 8
                         elif pourcent < 9 and num > octets / 100 * 90 and num < octets / 100 * 100:
-                            print (" -> 90%")                    
+                            if console.winfo_exists():
+                                console.insert("end","90%\n","orange")              
                             pourcent = 9
-                    else:
+                    else:# Sinon on arrive à la fin du fichier
+                        # Lecture dans le fichier
                         donnees = fich.read(int(remaining_data))  
+                        
+                        # Envoie des données au serveur
                         send_data(vpn_client,donnees,key_partaged)
+                        
+                        # Reception du signal pour continuer
                         rep = recv_message(vpn_client,key_partaged)
+                        
+                        # Ajout de la taille des données pour le diagramme
                         add_data_upload(cursor,len(donnees),now) 
-                        print (" -> 100%")  
+                        
+                        # Message console
+                        if console.winfo_exists():
+                                console.insert("end","100%\n","orange")
                         break  
                         
             else: # Sinon on envoi tous d'un coup
-                print("teste autre")
+                # Lecture dans le fichier
                 donnees = fich.read()
+                
+                # Envoi des données au serveur
                 send_data(vpn_client,donnees,key_partaged)
+                
+                # Ajout de la taille des données pour le diagramme
                 add_data_upload(cursor,len(donnees),now) 
+                
+                # Reception du signal pour continuer
                 recv_message(vpn_client,key_partaged)
 
             fich.close()
-            #time = datetime.datetime.now()
+            
+            # Message console
             if console.winfo_exists():
                 console.insert("end","Transfert du fichier terminé !\n","orange")
+                
+            # Envoi du signal pour informer que l'envoi du fichier est terminé
             signal2 = "bye"
-            #vpn_client.send(signal2.encode()) # Envoi comme quoi le transfert est fini
             send_data(vpn_client,signal2.encode(),key_partaged)
+            
+            # Ajout de la taille des données pour le diagramme
             add_data_upload(cursor,len(signal2.encode()),now) 
-            #print("\nsignal envoyé : ",signal2)
             return True
-        else:
-            print (time.strftime("\n--->Transfert du fichier annulé."))
-            time = datetime.datetime.now()
-            actuel_time = now.hour, ":", now.minute, ":", now.second
+        else:# Sinon problème de synchronisation
             if console.winfo_exists():
                 console.insert("end","Transfert du fichier annulé.\n","orange")
             return "BYE"
 
+#* Cette fonction permet la reception de fichier plus ou moins lourds
+#* Paramètre : key_partaged = clé à utiliser pour le déchiffrement
 def ReceptionFile(key_partaged):
-    accepte = "non"
     num = 0
     pourcent = 0
+    accepte = "non"
     signal = "recu"
     global id_file
     
+    # Reception d"un premier signal
     ip = recv_message(vpn_client,key_partaged)
-            
-    print("je recois signal")  
     
+    # Envoi d'un premier signal avant reception des paquets
     send_data(vpn_client,signal.encode(),key_partaged)
     
-    print("j'envoie signal pour recevoir")
+    # Tant que la connection avec le client est établie
     while (vpn_client.connect):
+        
+        # Reception des paquets
         recu = ""
-        #recu = client_connection.recv(1024)     
         recu = recv_message(vpn_client,key_partaged)
-        print(recu)
+        
+        # Ajout de la taille des données pour le diagramme
+        add_data_download(cursor,len(recu.encode()),now) 
+        
+        # Test la bonne reception du paquet
         if not recu : return False
         
-        if accepte == "non": # Condition si on a pas deja envoyer le nom et la taille du fichier
+        # Test grâce au flag si le premier paquet correspond aux informations du fichier
+        #! Chaque envoi de fichier doit commencer par un premier paquet qui contient
+        #! le chemin relatif et la taille du fichier qui va être envoyé
+        if accepte == "non": 
                 tmp = recu.decode()
+                # Stockage du chemin relatif du fichier
                 nomFich = tmp.split("NAME ")[1]
+                # Stockage du chemin relatif du fichier
                 nomFich = nomFich.split("OCTETS ")[0]
                 taille = tmp.split("OCTETS ")[1]
-                print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
+                #print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
+                
+                # Récupération du nom du fichier via le chemin relatif reçu 
                 nom_fichier = os.path.basename(nomFich)
                 
+                # Envoi du signal pour signaler la bonne reception du paquet 
                 signal = "GO"
-                #client_connection.send(signal.encode())
                 send_data(vpn_client,signal.encode(),key_partaged)
-                #SomUpload = addDataLenght(recu,SomUpload)
                 print (time.strftime("\n---> [%H:%M] réception du fichier en cours veuillez patienter..."))
                 f = open(nom_fichier, "wb")
                 accepte = "oui"
@@ -1206,105 +1463,168 @@ def ReceptionFile(key_partaged):
 
         elif recu.decode() == "bye": # Si on a recu "BYE" le transfer est termine
 
-            print (" -> 100%" ) 
+            # Message console
+            if console.winfo_exists():
+                console.insert("end","100%\n","orange")
+                                
             f.close()
             print (time.strftime("\n---> Le %d/%m a %H:%M réception du fichier termine !"))
             break
+        
         else: # Sinon on ecrit au fur et a mesure dans le fichier
-            print("j'ai recu le paquet je vais l'archiver")
-            f.write(recu)
-            #print(recu.decode(),type(recu.decode()))
-           
-            signal="ok"
             
+            # Ecriture du paquet reçu dans le fichier tampon
+            f.write(recu)
+           
+            # Envoi d'un signal pour continuer
+            signal="ok"
             send_data(vpn_client,signal.encode(),key_partaged)
+            
             if taille > 1024: # Si la taille est plus grande que 1024 on s'occupe du %
 
                 # Condition pour afficher le % du transfert :
                 if pourcent == 0 and num > taille / 100 * 10 and num < taille / 100 * 20:
-                    print (" -> 10%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","10%\n","orange")
                     pourcent = 1
                 elif pourcent == 1 and num > taille / 100 * 20 and num < taille / 100 * 30:
-                    print (" -> 20%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","20%\n","orange")
                     pourcent = 2
                 elif pourcent < 3 and num > taille / 100 * 30 and num < taille / 100 * 40:
-                    print (" -> 30%")
+                   # Message console
+                    if console.winfo_exists():
+                        console.insert("end","30%\n","orange")
                     pourcent = 3
                 elif pourcent < 4 and num > taille / 100 * 40 and num < taille / 100 * 50:
-                    print (" -> 40%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","40%\n","orange")
                     pourcent = 4
                 elif pourcent < 5 and num > taille / 100 * 50 and num < taille / 100 * 60:
-                    print (" -> 50%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","50%\n","orange")
                     pourcent = 5
                 elif pourcent < 6 and num > taille / 100 * 60 and num < taille / 100 * 70:
-                    print (" -> 60%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","60%\n","orange")
                     pourcent = 6
                 elif pourcent < 7 and num > taille / 100 * 70 and num < taille / 100 * 80:
-                    print (" -> 70%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","70%\n","orange")
                     pourcent = 7
                 elif pourcent < 8 and num > taille / 100 * 80 and num < taille / 100 * 90:
-                    print (" -> 80%")
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","80%\n","orange")
                     pourcent = 8
                 elif pourcent < 9 and num > taille / 100 * 90 and num < taille / 100 * 100:
-                    print (" -> 90%" )                   
+                    # Message console
+                    if console.winfo_exists():
+                        console.insert("end","90%\n","orange")         
                     pourcent = 9
                     
                 num = num + 1024
     
-    
     return True
     
-
+#* Cette fonction permet de lancer le processus d'échange de donnée calculé pour obtenir une vitesse en Mbit/s
+#* Paramètre : vpn_client = socket du client 
 def speedTestUpload(vpn_client):
-    answer="speedtest upload"
-    send_data(vpn_client,answer.encode(),key_partaged)
-    #vpn_client.send(answer.encode())
-    print("\nDébut du speed test ")
     duration = 0
     taille_bits = 0
     file = open("sauvegarde.txt","rb")
+    
+    # Envoi d'un premier singal pour commencer
+    answer="speedtest upload"
+    send_data(vpn_client,answer.encode(),key_partaged)
+    
+    # Reception d'un signal pour commencer
     recu = recv_message(vpn_client,key_partaged)
+    
     if recu.decode() == "GO":
+        
+        # Lance le timer 
         start = time.time()
+        
+        # Boucle sur 50 échanges
         for i in range(50):
             data = file.read(870) # Lecture du fichier en 1024 octets
-            taille_bits += sys.getsizeof(data) * 8    
-            #vpn_client.send(data)
+            taille_bits += sys.getsizeof(data) * 8 
+            
+            # Envoi des données 
             send_data(vpn_client,data,key_partaged)
+            
+            # Ajout de la taille des données pour le diagramme
             add_data_upload(cursor,len(data),now)  
+            
+            # Reception d'un signal pour continuer
             recu = recv_message(vpn_client,key_partaged)
-            print("\nJ'ai recu:",recu.decode())
+            
+            # Ajout de la taille des données pour le diagramme
             add_data_download(cursor,len(recu),now) 
+        
+        # Fin du timer 
         end = time.time()
+        
+        # Calcul du temps 
         duration += (end - start)
+        
+        # Envoi d'un signal pour signaler la fin
         signal = "quit"
         send_data(vpn_client,signal.encode(),key_partaged)
-        #vpn_client.send(signal.encode())
+        
+        # Calcul de la vitesse
         download_speed = ((taille_bits / duration)*8)/1_000_000
         return int(download_speed)
 
-    
+#* Cette fonction permet de lancer le processus d'échange de donnée calculé pour obtenir une vitesse en Mbit/s
+#* Paramètre : vpn_client = socket du client 
 def speedTestDownload(vpn_client):
-    answer="speedtest download"
-    send_data(vpn_client,answer.encode(),key_partaged)
-    #vpn_client.send(answer.encode())
-    add_data_upload(cursor,len(answer.encode()),now) 
     duration = 0
     taille_bits = 0
+    
+    # Envoi d'un premier singal pour commencer
+    answer="speedtest download"
+    send_data(vpn_client,answer.encode(),key_partaged)
+    
+    # Ajout de la taille des données pour le diagramme
+    add_data_upload(cursor,len(answer.encode()),now) 
+    
+    # Lance le timer 
     start = time.time()
+    
+    # Boucle sur 50 échanges
     for i in range(50):
         signal = "OK"
+        
+        # Reception des données
         data = recv_message(vpn_client,key_partaged)
+        
+        # Ajout de la taille des données pour le diagramme
         add_data_download(cursor,len(data),now)
         taille_bits += sys.getsizeof(data) * 8
-        #vpn_client.send(signal.encode())
+        
+        # Envoi d'un signal pour continuer
         send_data(vpn_client,signal.encode(),key_partaged)
+        
+        # Ajout de la taille des données pour le diagramme
         add_data_upload(cursor,len(signal.encode()),now) 
+        
+    # Fin du timer 
     end = time.time()   
+    
+    # Calcul du temps 
     duration += (end - start)
-    print("duration : ",duration)
+
+    # Calcul de la vitesse
     download_speed = ((taille_bits / duration)*8) / 1_000_000
-    print(download_speed)
+    
     return int(download_speed)
 
 
@@ -1396,7 +1716,7 @@ def initialise_trafic_reseau():
     tab_trafic.append(new_line)
     return False
     
-def Diffie_Hullman_Key():
+def Diffie_Hellman_Key():
    # Reception des paramètres de DH envoyé par le serveur
     # Réception des paramètres de Diffie-Hellman en binaire
     parameters_bytes = vpn_client.recv(1024)

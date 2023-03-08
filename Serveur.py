@@ -148,7 +148,7 @@ def ReceptionFile(key_partaged):
         
         # Recpetion du paquet    
         recu = recv_message(client_connection,key_partaged)
-        print(recu)
+        
         # Test la bonne reception du paquet
         if not recu : return False
         
@@ -159,10 +159,10 @@ def ReceptionFile(key_partaged):
                 tmp = recu.decode()
                 # Stockage du chemin relatif du fichier
                 nomFich = tmp.split("NAME ")[1]
-                # Stockage de la taille du fichier
+                # Stockage du chemin relatif du fichier
                 nomFich = nomFich.split("OCTETS ")[0]
                 taille = tmp.split("OCTETS ")[1]
-                print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
+                #print ("\n---> Fichier '" + nomFich + "' [" + taille + " Ko]")
                 
                 # Récupération du nom du fichier via le chemin relatif reçu 
                 nom_fichier = os.path.basename(nomFich)
@@ -372,7 +372,7 @@ def sendFile(name_file,file,ip,key_partaged):
             
             num = 0
             pourcent = 0
-            octets = octets * 870 # Reconverti en octets
+            octets = octets * 870 
             fich = open(file, "rb")
             remaining_data = octets
             
