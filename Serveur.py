@@ -620,7 +620,7 @@ def client_handler(client_connection):
             
             # Stockage du mails et de ses informations de la BDD
             id_mail +=1
-            c.execute("INSERT INTO emails (id_mail,connection_ip, source,subject,text,recu) VALUES (?,?, ?,?,?,?)", (id,destinataire.decode(), client_address[0],subject.decode(),text.decode(),False))
+            c.execute("INSERT INTO emails (id,connection_ip, source,subject,text,recu) VALUES (?,?, ?,?,?,?)", (id_mail,destinataire.decode(), client_address[0],subject.decode(),text.decode(),False))
             conn.commit()
 
         if recu.decode() == "recv msg ok": # Le client veut recevoir ses messages (s'il en a)

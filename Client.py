@@ -20,6 +20,7 @@ from Crypto.Hash import SHA256
 from tkinter.ttk import Combobox 
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
+
 warnings.filterwarnings("ignore")
 
 #?##########################################################################################################################################
@@ -286,6 +287,10 @@ def send_mail():
         if (rep.decode() == "ok"):
             send_data(vpn_client,text_value.encode(),key_partaged)
             rep = recv_message(vpn_client,key_partaged)
+        
+        if connecte:
+            # Message console
+            console.insert("end","Message envoyé !\n","orange")
         
         # Je ferme la fenetre
         window_send.destroy()
@@ -1627,42 +1632,70 @@ def speedTestDownload(vpn_client):
     
     return int(download_speed)
 
-
+#* Cette fonction permet de connecter le socket du client au socket du serveur 
+#* Paramètres : host = adresse ip du serveur
+#*              port = port de connexion ouvert sur le serveur serveur
 def connexion(host,port):  
     global console_window
     global console
+    
+    # Si le serveur existe 
     try:
-        vpn_client.connect((host, port)) # test si le serveur existe
+        vpn_client.connect((host, port)) 
+        
+        # Message console 
         if console_window.winfo_exists():
             console.insert("end","Connexion au serveur établie !\n","green")
         print("\n--------->Connexion au serveur établie!")
         return True
-    except:
+    except: # Erreur lors de la tentative de connexion
         print ("---------> le serveur '" + host + "' est introuvable.")
+        
+        # Message console
         if console_window.winfo_exists():
             console.insert("end", "Le serveur '" + host + "' est introuvable.\n","red")
         return False  
 
+#* Cette fonction permet de se déconnecter proprement du serveur auquel il est connecté
 def deconnexion():
+    
+    # Envoi d'un signal pour informer de la déconnexion
     signal = "exit"
     send_data(vpn_client,signal.encode(),key_partaged)
+    
+    # Ajout de la taille des données pour le diagramme
     add_data_upload(cursor,len(signal.encode()),now)
-    #print("signal envoyé")
+    
+    # Déconnexion et fermeture du socket
     vpn_client.shutdown(socket.SHUT_RDWR)
     vpn_client.close() 
     
+#* Cette fonction peremet de se reconnecter proprement à une session déjà ouverte dans la même exécution du programme
+#* Paramètres : host = adresse ip du serveur
+#*              port = port de connexion ouvert sur le serveur serveur
 def reconnection(host, port):
     global vpn_client
+    
+    # On initialise vpn_client avec une socket TCP/IP
     vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # On définit un délai de 2 secondes pour le timeout de la socket
     vpn_client.settimeout(2)
+    
+    # On appelle la fonction connexion avec les paramètres host et port pour établir la connexion VPN
     connexion(host, port)
     return True
 
+#* Cette fonction permet d'ajouter la taille des données qui ont été échangé à la BDD pour alimenter le diagramme du trafic réseau
+#* Paramètres :  cursor : curseur de la base de données
+#*               size_data : taille des données à ajouter
+#*               date : date à laquelle les données ont été échangées
 def add_data_upload(cursor,size_data,date):
     
+    # Recupère la valeurs de la somme des données uploadé jusque là
     cursor.execute("SELECT som_up FROM trafic WHERE date = ?",(date,))
     result = cursor.fetchone()
-    print(result)
+    
     # Si la somme upload vaut 0
     if result == 0:
         # On ajoute juste la taille des données
@@ -1677,8 +1710,13 @@ def add_data_upload(cursor,size_data,date):
         cursor.execute("UPDATE trafic SET som_up = ? WHERE date = ?", (som, date))
         conn.commit()
 
+#* Cette fonction permet d'ajouter la taille des données qui ont été échangé à la BDD pour alimenter le diagramme du trafic réseau
+#* Paramètres :  cursor : curseur de la base de données
+#*               size_data : taille des données à ajouter
+#*               date : date à laquelle les données ont été échangées
 def add_data_download(cursor,size_data,date):
     
+    # Recupère la valeurs de la somme des données uploadé jusque là
     cursor.execute("SELECT som_down FROM trafic WHERE date = ?",(date,))
     result = cursor.fetchone()
     
@@ -1692,32 +1730,11 @@ def add_data_download(cursor,size_data,date):
         som = result[0] + size_data
         cursor.execute("UPDATE trafic SET som_down = ? WHERE date = ?", (som, date))
         conn.commit()
-    
-def initialise_trafic_reseau():
-    global tab_trafic
-    now = datetime.now()
-    now = now.strftime("%d%m%Y")
-    
-    if len(tab_trafic) < 0:
-        new_line = (date,0,0)
-        # Ajout nouvelle ligne car nouvelle date
-        tab_trafic.append(new_line)
-        return False
-        
-    for ligne in tab_trafic:
-        print(ligne[0],type(ligne[0]))
-        if ligne[0] == now:
-            print("\nJe connais cette date")
-            return True
-    print("\nC'est différent, je créée une nouvelle ligne")
-    date = now
-    new_line = (date,0,0)
-    # Ajout nouvelle ligne car nouvelle date
-    tab_trafic.append(new_line)
-    return False
-    
+
+   
+#* Cette fonction permet d'échanger les clés qui permettront un chiffrement/déchiffrement sécurisé selon la méthode de Diffie-Hellman
 def Diffie_Hellman_Key():
-   # Reception des paramètres de DH envoyé par le serveur
+    
     # Réception des paramètres de Diffie-Hellman en binaire
     parameters_bytes = vpn_client.recv(1024)
     add_data_download(cursor,len(parameters_bytes),now)
@@ -1726,52 +1743,40 @@ def Diffie_Hellman_Key():
     parameters = struct.unpack('!2i',parameters_bytes)
     p = parameters[0]
     g = parameters[1]
-    #print("Reception des paramètres de DF OK!")
 
     # Choix d'une clé privé aléatoire entre 1 et 1000
     client_private_key = random.randint(2,10)
-    #print("Génération de la clé privé de DH du client OK!")
 
     # Calcul de la clé publique de Diffie-Hellman pour le client
     client_public_key = (g ** client_private_key) % p 
-    #print("client_public_key: ",client_public_key)
-    #print("\nCalcul de la clé public du client OK!")
 
     # Serialiation de la clé
     client_public_key_binary = str(int2binary(client_public_key)).encode()
-    #print("binary client: ",client_public_key_binary)
 
     # Envoie de la clé publique du client au serveur
-    #print("client public binary : ",client_public_key_binary)
     vpn_client.sendall(client_public_key_binary)
     add_data_upload(cursor,len(client_public_key_binary),now)
-    #print("\nEnvoie de la clé sérialisée OK!\n")
 
     # Réception de la clé public du client
     server_public_key_byte = vpn_client.recv(1024)
     add_data_download(cursor,len(server_public_key_byte),now)
-    #print("server binary: ",server_public_key_byte,type(server_public_key_byte))
-    #print("\nRéception de la clé public du serveur OK!")
 
     # Déserialisation de la clé publique du client
     server_public_key_binary = server_public_key_byte.decode()
     server_public_key = binary2int(server_public_key_binary)
-    #print("server_public_key: ",server_public_key,type(server_public_key))
-    #print("\nDéserialisation de la clé public du serveur OK!")
 
     # Calcul de la clé paratagée
     key_partaged = keyCalculated(client_private_key,server_public_key,p,g)
-    #print("\nclé partagée : ",key_partaged)
-    #print("\n-----> Les clés ont bien été échangées !")
+    
     # Génération du hachage de la clé partagée
     h = hashlib.sha256(str(key_partaged).encode())
     key_16 = h.hexdigest()[:16]
 
     return key_16.encode()
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from cryptography.hazmat.backends import openssl
 
+
+#* Cette fonction permet de signer un message est de l'envoyer au destinataire qui devra la vérifier de son côté
+#* Paramètre : key_partaged = clé à utiliser pour le chiffrement
 def Signature(key_partaged):
     # Générer une paire de clés RSA
     key = RSA.generate(2048)
@@ -1797,6 +1802,8 @@ def Signature(key_partaged):
     # Envoie de la clé publique pour déchiffrer
     send_data(vpn_client, keypub_bytes, key_partaged)
 
+#* Cette fonction permet de vérifier la signature d'un message reçu 
+#* Paramètres : key_partaged = clé à utiliser pour le déchiffrement
 def verif_Signature(key_partaged):
     # Message à signer
     message = b"Hello, world!"
@@ -1804,12 +1811,17 @@ def verif_Signature(key_partaged):
     # Hash du message
     h = SHA256.new(message)
     
+    # Réception du messsage signé
     signature = recv_message(vpn_client,key_partaged)
+    
+    # ENvoi d'un signal pour continuer 
     signal = "ok signature"
     send_data(vpn_client,signal.encode(),key_partaged)
+    
+    # Réception de la clé publique pour déchiffrer la signature
     keypub_bytes = recv_message(vpn_client,key_partaged)
     keypub = RSA.import_key(keypub_bytes)
-    print(keypub)
+    
     # Vérifier la signature avec la clé publique
     try:
         pkcs1_15.new(keypub).verify(h, signature)
@@ -1818,10 +1830,12 @@ def verif_Signature(key_partaged):
     except (ValueError, TypeError):
         print("La signature est invalide.")
         return False
-###########################################################################################################################################
-#---------------------------------------------------------CRÉATION DE L'INTERFACE---------------------------------------------------------#
-###########################################################################################################################################
-# Création de la fenêtre de l'application
+    
+#?##########################################################################################################################################
+#?---------------------------------------------------------CRÉATION DE L'INTERFACE---------------------------------------------------------#
+#?##########################################################################################################################################
+
+#* Création de la fenêtre de l'application
 fenetre = Tk()
 fenetre['bg'] =  '#372589'
 fenetre.geometry("1200x630")
@@ -1830,14 +1844,14 @@ img = Image.open("img.png")
 img = img.resize((2200,1000), Image.BICUBIC)
 img = ImageTk.PhotoImage(img)
 
-# Création d'un canevas qui va contenir tous les éléments de dessins de l'application
+#* Création d'un canevas qui va contenir tous les éléments de dessins de l'application
 canvas = Canvas(fenetre, width=2688, height=1856, background='#372589',borderwidth=0,highlightthickness=0)
 image = canvas.create_image(0,0,anchor=NW,image=img)
 canvas.pack(fill=BOTH, expand=YES)
 width = fenetre.winfo_width()
 height = fenetre.winfo_height()
 
-# Module 1 : Bouton ON/OFF 
+#* Module 1 : Bouton ON/OFF 
 module1_1 = canvas.create_rectangle(0, 0, 0, 0, fill="#2d1c76", width=0)
 module1= canvas.create_rectangle(0, 0, 0, 0, fill="#412589", width=1)
 bouton_module1_1 = canvas.create_oval(0, 0, 0, 0, fill="#a4c2f4", width=1)
@@ -1847,27 +1861,22 @@ bouton_module1_4= canvas.create_oval(0, 0, 0, 0, fill="#2d1c76", width=1)
 dessin_ON_OFF_module1 = canvas.create_rectangle(0, 0, 0, 0, width=1, fill="red")
 txt_module1 = canvas.create_text(0, 0, text="Déconnecté",font="Robot 13 bold" ,fill="white")
 
-
+#* REctangle de fond des différents modules
 module2_1 = canvas.create_rectangle(0, 0, 0, 0,fill="#2d1c76",width=0)
 module2 = canvas.create_rectangle(0, 0, 0, 0,fill="#412589",width=1)
-
 module3_1 = canvas.create_rectangle(0, 0, 0, 0,fill="#2d1c76",width=0)
 module3= canvas.create_rectangle(0, 0, 0, 0,fill="#412589",width=1)
-
-
 module4_1 = canvas.create_rectangle(0, 0, 0, 0,fill="#2d1c76",width=0)
 module4 = canvas.create_rectangle(0, 0, 0, 0,fill="#412589",width=1)
-
 module5_1 = canvas.create_rectangle(0, 0, 0, 0,fill="#2d1c76",width=0)
 module5 = canvas.create_rectangle(0, 0, 0, 0,fill="#412589",width=1)
-
 module6_1 = canvas.create_rectangle(0, 0, 0, 0,fill="#2d1c76",width=0)
 module6 = canvas.create_rectangle(0, 0, 0, 0,fill="#412589",width=1)
 
-# Bloc DATA
+#* Bloc DATA
 DATA_txt = canvas.create_text(0,0, text="APPLICATIONS", font="Robot 13 bold", fill="white")
-# Symbole flèche
 
+#* Symbole flèche
 user = canvas.create_polygon(0, 0, 0, 0,0, 0, 0, 0,0, 0, 0, 0,fill='#a4c2f4')
 trait1 = canvas.create_line(0, 0, 0, 0,width=2)
 trait2 = canvas.create_line(0, 0, 0, 0,width=2)
@@ -1876,19 +1885,19 @@ trait4 = canvas.create_line(0, 0, 0, 0,width=2)
 trait5 = canvas.create_line(0, 0, 0, 0,width=2)
 trait6 = canvas.create_line(0, 0, 0, 0,width=2)
 
+#* Bloc USER
 tete_user = canvas.create_oval(0, 0, 0, 0,fill="#a4c2f4",width=2)
 txt_user = canvas.create_text(0, 0, text="USER", font="Robot 13 bold", fill="white")
 txt_pseudo = canvas.create_text(0, 0, text="Pseudo :", font="Robot 10 bold", fill="white")
 txt_ip = canvas.create_text(0, 0, text="IP :", font="Robot 10 bold", fill="white")
 txt_connexion = canvas.create_text(0, 0, text="Dernière connexion :", font="Robot 10 bold", fill="white")
 
+#* Logo VPN
 logo_carré = canvas.create_rectangle(0, 0, 0, 0,fill="#a4c2f4",width=2)
 oval1 = canvas.create_oval(0, 0, 0, 0,fill="#412589",width=2)
 oval2 = canvas.create_oval(0, 0, 0, 0,fill="#412589",width=2)
 oval3 = canvas.create_oval(0, 0, 0, 0,fill="#412589",width=2)
 logo_carré2 = canvas.create_rectangle(0, 0, 0, 0,fill="#412589",width=0)
-
-
 pointe = canvas.create_polygon(0, 0,
                                0, 0,
                                0, 0,
@@ -1902,7 +1911,6 @@ pointe = canvas.create_polygon(0, 0,
                                0, 0,
                                0, 0,
                                0, 0,fill="#a4c2f4")
-
 trait7 = canvas.create_rectangle(0, 0, 0, 0,width=0,fill="#a4c2f4")
 trait8 = canvas.create_line(0, 0, 0, 0,width=2)
 trait9 = canvas.create_line(0, 0, 0, 0,width=2)
@@ -1916,20 +1924,16 @@ trait16 = canvas.create_line(0, 0, 0, 0,width=2)
 trait17 = canvas.create_line(0, 0, 0, 0,width=2)
 trait18 = canvas.create_line(0, 0, 0, 0,width=2)
 trait19 = canvas.create_line(0, 0, 0, 0,width=2)
-
 txt_VPN = canvas.create_text(0, 0, text="VPN", font="Robot 20 bold", fill="black")
 trait20 = canvas.create_line(0, 0, 0, 0,width=6)
 trait21 = canvas.create_line(0, 0, 0, 0,width=6)
 
-
+#* Speedtest
 txt_speedtest = canvas.create_text(0, 0, text="SPEEDTEST", font="Robot 13 bold", fill="white")
-
 carre_download = canvas.create_rectangle(0, 0, 0, 0, fill="#a4c2f4")
 txt_download = canvas.create_text(0, 0,text="DOWNLOAD",font="Robot 14 bold", fill="black")
-
 carre_upload = canvas.create_rectangle(0, 0, 0, 0, fill="#a4c2f4")
 txt_upload = canvas.create_text(0, 0,text="UPLOAD",font="Robot 14 bold", fill="black")
-
 cercle_down = canvas.create_oval(0, 0, 0, 0,fill="#a4c2f4",width=1)
 cercle_down2 = canvas.create_oval(0, 0, 0, 0,fill="#412589",width=1)
 
@@ -1940,7 +1944,6 @@ linefleche_down1_1 = canvas.create_line(0, 0, 0, 0,width=2)
 linefleche_down1_2 = canvas.create_line(0, 0, 0, 0,width=2)
 linefleche_down1_3 = canvas.create_line(0, 0, 0, 0,width=2)
 linefleche_down1_4 = canvas.create_line(0, 0, 0, 0,width=2)
-#linefleche1_1 = canvas.create_line(437,223,457,223,width=2)
 
 down_0 = canvas.create_text(0, 0, text="0", font=("Arial bold", 12),fill="white")
 down_250 = canvas.create_text(0, 0, text="10", font=("Arial bold", 12),fill="white")
@@ -2018,6 +2021,8 @@ bar0 = canvas.create_rectangle(0, 0, 0, 0,fill="grey")
 bar1 = canvas.create_rectangle(0, 0, 0, 0,fill="#a4c2f4")
 date0 = canvas.create_text(0,0,text='',font="Robot 8 bold")
 
+
+#* Module diagramme trafic réseau
 txt_trafic = canvas.create_text(0, 0, text="TRAFIC USAGE", font="Robot 13 bold", fill="white")
 
 trafic_0GB = canvas.create_text(0, 0, text="0MB", font="Robot 9 bold", fill="white")
@@ -2032,6 +2037,7 @@ txt_point1 = canvas.create_text(0, 0, text="Incoming", font="Robot 9 bold", fill
 
 txt_point2 = canvas.create_text(0, 0, text="Outcoming", font="Robot 9 bold", fill="white")
 
+#* Module envoi fichier
 bouton_send_rond_ = canvas.create_oval(1002,270,1050,305, fill="#6ea1f6",width=1)
 bouton_send_rond2_ = canvas.create_oval(1102,270,1150   ,305, fill="#6ea1f6",width=1)
 bouton_send_rond = canvas.create_oval(1002,265,1050,300, fill="#a4c2f4",width=1)
@@ -2056,6 +2062,7 @@ trait_10 = canvas.create_line(1020,265,1131,265,width=1)
 trait_11 = canvas.create_line(1020,300,1131,300,width=1)
 trait_12 = canvas.create_line(1020,305,1131,305,width=1)
 
+#* Bouton mail
 bouton1_mail2 = canvas.create_rectangle(995,380,1035,425,fill="grey",width=1)
 bouton2_mail = canvas.create_rectangle(995,380,1035,420,fill="#a4c2f4",width=1)
 txt_mail = canvas.create_text(1014,400,text="M",font="Robot 25")
@@ -2063,44 +2070,51 @@ dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
 notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
 
 
-###########################################################################################################################################
-#--------------------------------------------------------CRÉATION DE LA BASE DE DONNÉES---------------------------------------------------#
-###########################################################################################################################################
+#?##########################################################################################################################################
+#?--------------------------------------------------------CRÉATION DE LA BASE DE DONNÉES---------------------------------------------------#
+#?##########################################################################################################################################
 date = 0
 now = datetime.now()
 now = now.strftime("%d%m%Y")
-print(now)
 conn = sqlite3.connect("ma_base_de_donnees.db")
 cursor = conn.cursor()
+
 # Je créée la base de donnée si elle n'existe pas 
+# Si elle est vide => signifie que c'est la première connexion du client
 cursor.execute("CREATE TABLE IF NOT EXISTS trafic (date INTEGER PRIMARY KEY, som_up INTEGER,som_down INTEGER)")
+
 cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                                             source TEXT NOT NULL,
                                                             subject TEXT NOT NULL,
                                                             text TEXT NOT NULL, 
                                                             open boolean)""")
+
 cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KEY, ad_mail TEXT NOT NULL)")
-# Si elle est vide => signifie que c'est la première connexion du client
+
+# Récupère la nombre d'éléments (jours avec des données) dans le trafic réseau
 cursor.execute("SELECT COUNT(*) FROM trafic")
 result = cursor.fetchone()
-print("il y a connexion",result)
+
+
 if result[0] == 0:
-    print("La table utilisateurs est vide. C'est la première connexion de l'utilisateur")
+    # La table utilisateurs est vide. C'est la première connexion de l'utilisateur
+    # Insert une nouvelle ligne 
     cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
     conn.commit()
 else:
-    print("pas premiere connexion")
+    # La table utilisateurs n'est pas vide
+    # Recupère le nombre d'éléments enregistré dans la table avec la date actuel
     cursor.execute("SELECT COUNT(*) FROM trafic WHERE date=?",(now,))
     result = cursor.fetchone()
 
     # Je vérifie si le client s'est déjà connecté aujourd'hui ou pas
-    if result[0] > 0:
-        print("\nLe client s'est déjà connecté aujourd'hui")
-    else:
-        print("\nLe client s'est déjà connecté mais pas aujourd'hui")
+    if result[0] < 0:
+        # Le client ne s'est pas connecté aujourd'hui
+        # Insert une nouvelle ligne
         cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
         conn.commit()
 
+#* Histogramme
 bar0 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")
 bar1 = canvas.create_rectangle(0,0,0,0,fill="grey")
 
@@ -2124,27 +2138,37 @@ bar1_6 = canvas.create_rectangle(0,0,0,0,fill="grey")
 
 bars = [bar0, bar1]
 
-cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
+#* Stockage des données 
+cursor.execute("SELECT * FROM trafic")
 rows = cursor.fetchall()
 nb_ligne = len(rows)
 space_size = 438 
 
-
+#! Chaque bloc de if vérifie si il y a encore une valeur qui peut être affiché
+#! Si c'est le cas, elle suit toujours le même processus pour l'afficher dans le diagramme en décalant la barre et en 
+#! changeant la valeur des données
 if nb_ligne >=1:
-    row0 = rows[0]
-    pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+    
+    # Récupère la ligne qui correspondra à la date la plus éloigné à celle de aujourd'hui
+    row0 = rows[0] 
+    
+    # Calcul du pourcentage de la barre  pour les données uploadées
+    pourcentage_up =  (row0[1]*100) / 1_500_000
+    
+    # Calcul du pourcentage de la barre  pour les données downloadées
     pourcentage_down =  (row0[2]*100) / 1_500_000
+    
+    # Création des éléments pour dessiner les deux colonnes avec les b
     som1 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size),560,fill="#a4c2f4")
     som2 = canvas.create_rectangle((space_size) ,(560-(150*(pourcentage_up)/100)),(space_size+152),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
     date0 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
+    
+    # Décalage pour les prochaines colonnes
     space_size = space_size +65
     nb_ligne = nb_ligne -1
     if nb_ligne >= 1:
-        som3 = None
-        som4 = None
-        date1 = None
         row0 = rows[1]
-        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+        pourcentage_up =  (row0[1]*100) / 1_500_000
         pourcentage_down =  (row0[2]*100) / 1_500_000
         som3 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
         som4 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
@@ -2152,11 +2176,8 @@ if nb_ligne >=1:
         space_size = space_size +65
         nb_ligne = nb_ligne -1
         if nb_ligne >= 1:
-            som5 = None
-            som6 = None
-            date2 = None
             row0 = rows[2]
-            pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+            pourcentage_up =  (row0[1]*100) / 1_500_000
             pourcentage_down =  (row0[2]*100) / 1_500_000
             som5 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
             som6 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
@@ -2164,11 +2185,8 @@ if nb_ligne >=1:
             space_size = space_size +65
             nb_ligne = nb_ligne -1
             if nb_ligne >= 1:
-                som7 = None
-                som8 = None
-                date3 = None
                 row0 = rows[3]
-                pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                pourcentage_up =  (row0[1]*100) / 1_500_000
                 pourcentage_down =  (row0[2]*100) / 1_500_000
                 som7 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
                 som8 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
@@ -2176,11 +2194,8 @@ if nb_ligne >=1:
                 space_size = space_size +65
                 nb_ligne = nb_ligne -1
                 if nb_ligne >= 1:
-                    som9 = None
-                    som10 = None
-                    date4 = None
                     row0 = rows[4]
-                    pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                    pourcentage_up =  (row0[1]*100) / 1_500_000 
                     pourcentage_down =  (row0[2]*100) / 1_500_000
                     som9 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
                     som10 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
@@ -2188,30 +2203,34 @@ if nb_ligne >=1:
                     space_size = space_size +65
                     nb_ligne = nb_ligne -1
                     if nb_ligne >= 1:
-                        som11 = None
-                        som12 = None
-                        date5 = None
                         row0 = rows[5]
-                        pourcentage_up =  (row0[1]*100) / 1_500_000 # => 12 Mbits
+                        pourcentage_up =  (row0[1]*100) / 1_500_000
                         pourcentage_down =  (row0[2]*100) / 1_500_000
                         som11 = canvas.create_rectangle((space_size-7) ,(560-150*(pourcentage_up)/100),(space_size+7),560,fill="#a4c2f4")
                         som12 = canvas.create_rectangle((space_size-7) ,(560-(150*(pourcentage_up)/100)),(space_size+7),(560-150*(pourcentage_up)/100-(150*pourcentage_down)/100),fill="grey")
                         date5 = canvas.create_text(space_size,570,text=row0[0],font="Robot 8 bold", fill="white")
                         space_size = space_size +65
                         nb_ligne = nb_ligne -1
-###########################################################################################################################################
-#--------------------------------------------------CRÉATION DES INTERACTIONS DE L'INTERFACE-----------------------------------------------#
-###########################################################################################################################################
-statut = 0
+                        
+#?##########################################################################################################################################
+#?--------------------------------------------------CRÉATION DES INTERACTIONS DE L'INTERFACE-----------------------------------------------#
+#?##########################################################################################################################################
+compt = 0
 jeton = 0
+statut = 0
 connecte = False
 premier_connexion = 0
-compt = 0
+
+# Interaction avec le système 
 canvas.bind('<Button>',clicked)
+
 # Mise à jour des formes géométriques lorsque la fenêtre est agrandie
 canvas.bind("<Configure>", on_resize)
+
+# Fenêtre pop-up pour confirmer la fermeture de la fenêtre
 fenetre.protocol("WM_DELETE_WINDOW", on_closing)
 
+# Initialisation de la fenêtre pour la console
 console_window = Toplevel(fenetre)
 console_window.title("Nouvelle fenêtre")
 console_window.geometry("600x300")
@@ -2230,6 +2249,7 @@ console_window.withdraw()
 console.insert(INSERT, "Bienvenue dans la console\n","white")
 consol_stat = 1
 
+# Initialisation de la fenêtre pour la boite mail
 window_mail = Toplevel(fenetre)
 window_mail.geometry("600x400")
 window_mail.title("Application Email")
@@ -2243,30 +2263,25 @@ mail_list.pack(fill="both", expand=True)
 # Ajout d'un cadre pour contenir les détails du mail sélectionné
 details_frame = Frame(window_mail)
 details_frame.pack(side="right", fill="both", expand=True)
-
 # Ajout d'un label pour afficher les détails du mail sélectionné
 details_label = Label(details_frame, text="Sélectionnez un mail")
 details_label.pack(fill="both", expand=True)
-
 window_mail.withdraw()
-
-
     
 
-###########################################################################################################################################
-#----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
-###########################################################################################################################################
-# Paramètres de connexion
-host = 'localhost'
-port = 24081
+#?##########################################################################################################################################
+#?----------------------------------------------------------MISE EN PLACE DU SOCKET--------------------------------------------------------#
+#?##########################################################################################################################################
 
-# host = '31.33.237.105'
-# port = 16387
+# Paramètres de connexion
+host = '31.33.237.105'
+port = 16387
 
 # Création du socket client
 vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-
-
+# Boucle de la fenêtre principale
 fenetre.mainloop()
+
+# Fermeture de la BDD
 conn.close()
