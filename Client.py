@@ -265,6 +265,17 @@ def send_mail():
     def send_msg():
         # Je récupère les valeurs des différents champs
         dest_value = dest_entry.get()
+        
+        # Recupère le nombre de message déjà présent dans la BDD pour calculer l'id de prochain
+        cursor.execute("SELECT COUNT(*) FROM contacts WHERE ad_mail=?",(dest_value,))
+        resultat = cursor.fetchone()
+        
+        if resultat[0] != 0:
+            # Je recupère l'ip
+            cursor.execute("SELECT ip FROM contacts WHERE ad_mail=?",(dest_value,))
+            rep = cursor.fetchone()
+            dest_value = rep[0]
+            
         sub_value = subject_entry.get()
         text_value = body_text.get("1.0", "end")
 
@@ -302,6 +313,9 @@ def send_mail():
 #* Cette fonction permet d'ouvrir les mails 
 def open_mail():
     global window_mail
+    global mail_list
+    global details_frame
+    global details_label
     
     # Vérifie si la fenêtre existe déjà et la déroule si c'est le cas
     if window_mail.winfo_exists():
@@ -313,6 +327,21 @@ def open_mail():
         window_mail.title("Application Email")
         window_mail.resizable(False,False)
         centrefenetre(window_mail)
+        frame = Frame(window_mail)
+        frame.pack(side="left", fill="both", expand=True)
+        mail_list = Listbox(frame)
+        # Ajout d'une liste de mails
+        mail_list.pack(fill="both", expand=True)
+        # Ajout d'un cadre pour contenir les détails du mail sélectionné
+        details_frame = Frame(window_mail)
+        details_frame.pack(side="right", fill="both", expand=True)
+        # Ajout d'un label pour afficher les détails du mail sélectionné
+        details_label = Label(details_frame, text="Sélectionnez un mail")
+        details_label.pack(fill="both", expand=True)
+    
+    # Vide mail_list si elle déjà été remplie
+    if mail_list.winfo_exists():
+        mail_list.delete(0,'end')
     
     # Récupère les mails depuis la base de données
     cursor.execute("SELECT * FROM email_client ")
@@ -321,17 +350,26 @@ def open_mail():
     # Ajoute les mails dans la liste de mails de l'interface
     for row in rows:
         print(row)
-        mail_list.insert(0, row[1]+" ("+row[2]+")")
+        mail_list.insert(1, row[1]+" ("+row[2]+")")
 
     #* Définition d'une fonction pour afficher les détails du mail sélectionné
     def display_details(event):
+        global details_label
+        global details_frame
+        global mail_list
         # Efface la notification en haut de l'écran lorsque l'utilisateur ouvre un mail
         canvas.coords(notif,0,0,0,0)
         fenetre.update()
         
         # Récupère l'index du mail sélectionné
         index = mail_list.curselection()[0]
+        print(index)
         
+        # Remet à 0 les anciens widgets
+        for widget in details_frame.winfo_children():
+            if isinstance(widget, Label):
+                widget.destroy()
+                
         # Efface le label des détails pour éviter des doublons et crée les labels pour chaque 
         # détail du mail
         details_label.destroy()
@@ -347,7 +385,7 @@ def open_mail():
         text_label.grid(row=2, column=0, padx=10, pady=10)
         text = Label(details_frame, text=rows[index][3])
         text.grid(row=2, column=1, padx=0, pady=10)
-
+        
         # Ajoute un bouton "Répondre" dans les détails du mail sélectionné et qui appelle 
         # la fonction send_mail()
         reply_button = Button(details_frame, text="Répondre", command=send_mail)
@@ -1020,13 +1058,13 @@ def clicked (event) :
             # Reçoit le nombre de message en attente côté serveur
             nb_msg = recv_message(vpn_client,key_partaged)
             nb_msg = nb_msg.decode()
-            
+            print(nb_msg)
             # Si il y a au moins un message 
             if nb_msg != "0":
                 
                 # Message console
                 if console.winfo_exists():
-                    console.insert("end","il y a ",nb_msg.decode()," message(s) en attente(s)...\n","orange")
+                    console.insert("end","il y a ",nb_msg," message(s) en attente(s)...\n","orange")
             
             # S'il n'y a aucun message 
             if nb_msg == "0":
@@ -1075,7 +1113,7 @@ def clicked (event) :
                         last_id = cursor.fetchone()[0]
                         
                     # Ajout du message dans la BDD
-                    cursor.execute("""INSERT INTO email_client (id,source, subject, text) VALUES (?, ?, ?, ?,?)""", 
+                    cursor.execute("""INSERT INTO email_client (id,source, subject, text,open) VALUES (?, ?, ?, ?, ?)""", 
                                 (last_id+1,source.decode(), subject.decode(), text.decode(),False))
                     conn.commit()
                     
@@ -1599,7 +1637,7 @@ def speedTestDownload(vpn_client):
     send_data(vpn_client,answer.encode(),key_partaged)
     
     # Ajout de la taille des données pour le diagramme
-    add_data_upload(cursor,len(answer.encode()),now) 
+    add_data_upload(cursor,len(answer),now) 
     
     # Lance le timer 
     start = time.time()
@@ -1619,7 +1657,7 @@ def speedTestDownload(vpn_client):
         send_data(vpn_client,signal.encode(),key_partaged)
         
         # Ajout de la taille des données pour le diagramme
-        add_data_upload(cursor,len(signal.encode()),now) 
+        add_data_upload(cursor,len(signal),now) 
         
     # Fin du timer 
     end = time.time()   
@@ -1697,11 +1735,10 @@ def add_data_upload(cursor,size_data,date):
     result = cursor.fetchone()
     
     # Si la somme upload vaut 0
-    if result == 0:
+    if result == None:
         # On ajoute juste la taille des données
         cursor.execute("UPDATE trafic SET som_up = ? WHERE date = ?", (size_data, date))
         conn.commit()
-        print("j'ajoute")
         
     else:
         # Sinon, on ajoute la taille des données à la somme déjà enregistré
@@ -1721,7 +1758,7 @@ def add_data_download(cursor,size_data,date):
     result = cursor.fetchone()
     
     # Si la somme upload vaut 0
-    if result == 0:
+    if result == None:
         # On ajoute juste la taille des données
         cursor.execute("UPDATE trafic SET som_down = ? WHERE date = ?", (size_data, date))
         conn.commit()

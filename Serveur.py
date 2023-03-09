@@ -148,7 +148,7 @@ def ReceptionFile(key_partaged):
         
         # Recpetion du paquet    
         recu = recv_message(client_connection,key_partaged)
-        
+        print(recu)
         # Test la bonne reception du paquet
         if not recu : return False
         
@@ -704,7 +704,7 @@ def client_handler(client_connection):
             print("\n-----> Le client ",client_connection.getpeername()," s'est déconnecté !")
             client_count -= 1
             clients_connected.remove(client_connection)
-            break
+            return 0
         
     
 #?##############################################################################################################
@@ -747,7 +747,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
 while(True):
     client_connection, client_address = vpn_server.accept()
     # Vérification des adresses IP
-    if client_address[0] == "77.128.153.176" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
+    if client_address[0] == "77.130.108.126" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
         client_found = False
         
         #! On va chercher à savoir si le client est connu dans la BDD 
