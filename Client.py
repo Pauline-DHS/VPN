@@ -1737,7 +1737,6 @@ def Diffie_Hellman_Key():
     
     # Réception des paramètres de Diffie-Hellman en binaire
     parameters_bytes = vpn_client.recv(1024)
-    add_data_download(cursor,len(parameters_bytes),now)
 
     # Parsing des données
     parameters = struct.unpack('!2i',parameters_bytes)
@@ -1755,11 +1754,9 @@ def Diffie_Hellman_Key():
 
     # Envoie de la clé publique du client au serveur
     vpn_client.sendall(client_public_key_binary)
-    add_data_upload(cursor,len(client_public_key_binary),now)
 
     # Réception de la clé public du client
     server_public_key_byte = vpn_client.recv(1024)
-    add_data_download(cursor,len(server_public_key_byte),now)
 
     # Déserialisation de la clé publique du client
     server_public_key_binary = server_public_key_byte.decode()
@@ -2274,8 +2271,8 @@ window_mail.withdraw()
 #?##########################################################################################################################################
 
 # Paramètres de connexion
-host = '31.33.237.105'
-port = 16387
+host = '127.0.0.1'
+port = 24081
 
 # Création du socket client
 vpn_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
