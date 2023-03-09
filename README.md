@@ -59,9 +59,8 @@ Première étape :
 
 Deuxième étape : 
 
-    * Avant de lancer le programme du serveur, veillez à ajouter l'adresse IP de la machine que vous voulez connecté au serveur
-    dans la liste des adresses autorisées
-
+ * Avant de lancer le programme du serveur, veillez à ajouter l'adresse IP de la machine que vous voulez connecté au serveur dans la liste des adresses autorisées
+    
         -> ligne 750
 
 # ▶️ Utilisation
