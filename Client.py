@@ -190,6 +190,9 @@ def contacts():
     frame.pack(side="top",fill="both", expand=True)
     contact_list = Listbox(frame)
     
+    # Bouton pour ajouter un nouveau contact 
+    add_button = Button(window_contact, text="Ajouter un contact", command=lambda :add_contact(window_contact))
+    add_button.pack(side="bottom",pady=10)
     # Si la table "contacts" contient des données, les contacts sont ajoutés dans l'interface
     if len(rows) > 0:
         for row in rows:
@@ -200,12 +203,11 @@ def contacts():
         details_label = Label(details_contact, text="Vous n'avez aucun contact.")     
         details_label.pack() 
         
-    # Bouton pour ajouter un nouveau contact 
-    add_button = Button(window_contact, text="Ajouter un contact", command=lambda :add_contact(window_contact))
-    add_button.pack(side="bottom",pady=10)
     
     # Affichage de la liste des contacts
     contact_list.pack(side="top",fill="both", expand=True)
+    
+    window_contact.update()
 
 #* Cette fonction permet d'ajouter des contacts dans la liste de contacts en les enregistrant dans la BDD
 #* Paramètre : window_contact = fenêtre des contacts
@@ -2200,7 +2202,7 @@ bar1_6 = canvas.create_rectangle(0,0,0,0,fill="grey")
 bars = [bar0, bar1]
 
 #* Stockage des données 
-cursor.execute("SELECT * FROM trafic")
+cursor.execute("SELECT * FROM trafic ORDER BY date DESC")
 rows = cursor.fetchall()
 nb_ligne = len(rows)
 space_size = 438 

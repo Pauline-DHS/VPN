@@ -114,7 +114,7 @@ def ip_window(file):
         window_dest.quit()
         sendFile(file,ip_address)
 
-    # Création d'un bouton pour valider l'adresse IPentrée par l'utilisateur.
+    # Création d'un bouton pour valider l'adresse IPentre par l'utilisateur.
     add_button = Button(window_dest, text="Valider", command=close)
     add_button.pack()
 
@@ -268,7 +268,7 @@ def send_mail():
         # Je récupère les valeurs des différents champs
         dest_value = dest_entry.get()
         
-        # Recupère le nombre de messge déjà présent dans la BDD pour calculer l'id de prochain
+        # Recupère le nombre de messge déjà prsent dans la BDD pour calculer l'id de prochain
         cursor.execute("SELECT COUNT(*) FROM contacts WHERE ad_mail=?",(dest_value,))
         resultat = cursor.fetchone()
         
@@ -2650,7 +2650,7 @@ def open_mail():
     if window_mail.winfo_exists():
         window_mail.deiconify()
     else:
-        # Sinon, crée une nouvelle fenêtre et configure ses propriétés
+        # Sinon, crée une nouvelle fenêtre et configure ses proprités
         window_mail = Toplevel(fenetre)
         window_mail.geometry("600x400")
         window_mail.title("Application Email")
@@ -4590,7 +4590,7 @@ premier_connexion = 0
 # Interaction avec le système 
 canvas.bind('<Button>',clicked)
 
-# Mise à jour des formes géométriques lorsque la fenêtre est agrandie
+# Mise  jour des formes géométriques lorsque la fenêtre est agrandie
 canvas.bind("<Configure>", on_resize)
 
 # Fenêtre pop-up pour confirmer la fermeture de la fenêtre
@@ -5047,7 +5047,7 @@ def open_mail():
         reply_button.grid(row=3, column=1, padx=10, pady=10)
 
 
-    # Liaison de la fonction display_details() à l'événement "selection" de la liste de mails
+    # Liaison de la fonction display_details() à l'évnement "selection" de la liste de mails
     mail_list.bind("<<ListboxSelect>>", display_details)
     
     # Ajoute une barre de menu à la fenêtre d'affichage des mails et définit les 
@@ -6504,7 +6504,7 @@ def verif_Signature(key_partaged):
     # Hash du message
     h = SHA256.new(message)
     
-    # Réception du messsage signé
+    # Rception du messsage signé
     signature = recv_message(vpn_client,key_partaged)
     
     # ENvoi d'un signal pour continuer 
