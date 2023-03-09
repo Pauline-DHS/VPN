@@ -101,12 +101,24 @@ def ip_window(file):
     ip_entry['values'] = list
     ip_entry.pack()
 
+    
     #* Définition de la fonction close() qui va récupérer l'adresse IP entrée par l'utilisateur 
     #* et lancer la fonction sendFile() pour envoyer le fichier.
     def close():
         global ip_address
         ip_address = ip_entry.get()
         print(ip_address)
+        
+        # Recupère le nombre de message déjà présent dans la BDD pour calculer l'id de prochain
+        cursor.execute("SELECT COUNT(*) FROM contacts WHERE ad_mail=?",(ip_address,))
+        resultat = cursor.fetchone()
+        
+        if resultat[0] != 0:
+            # Je recupère l'ip
+            cursor.execute("SELECT ip FROM contacts WHERE ad_mail=?",(ip_address,))
+            rep = cursor.fetchone()
+            ip_address = rep[0]
+        
         window_dest.destroy()
         window_dest.quit()
         sendFile(file,ip_address)
@@ -573,11 +585,11 @@ def on_resize(event):
     canvas.coords(tete_user,98/1200*width, 360/630*height, 135/1200*width, 395/630*height)
     canvas.coords(txt_user,115/1200*width, 345/630*height)
     canvas.itemconfigure(txt_user, font=("Robot", int(10/630*height),"bold"))
-    canvas.coords(txt_pseudo,65/1200*width, 455/630*height)
+    canvas.coords(txt_pseudo,100/1200*width, 455/630*height)
     canvas.itemconfigure(txt_pseudo, font=("Robot", int(10/630*height),"bold"))
-    canvas.coords(txt_ip,45/1200*width, 490/630*height)
+    canvas.coords(txt_ip,84/1200*width, 490/630*height)
     canvas.itemconfigure(txt_ip, font=("Robot", int(10/630*height),"bold"))
-    canvas.coords(txt_connexion,110/1200*width, 525/630*height)
+    canvas.coords(txt_connexion,114/1200*width, 525/630*height)
     canvas.itemconfigure(txt_connexion, font=("Robot", int(10/630*height),"bold"))
     canvas.coords(bouton_console_rond,50/1200*width, 581/630*height, 75/1200*width, 605/630*height)
     canvas.coords(bouton_console_rond2,160/1200*width, 581/630*height, 185/1200*width, 605/630*height)
@@ -1084,8 +1096,10 @@ def clicked (event) :
                 send_data(vpn_client,signal.encode(),key_partaged)
                 
                 signal = "ok"
+                int_msg = int(nb_msg)
+                
                 # Repète le processus autant de fois qu'il y a de messages
-                for i in range(int(nb_msg)):
+                for i in range(int_msg):
                     
                     # Reception de la source
                     source = recv_message(vpn_client,key_partaged)
@@ -1141,13 +1155,13 @@ def clicked (event) :
             # Recption du nombre de fichier stocké en BDD côté serveur
             nb_file = recv_message(vpn_client,key_partaged)
             nb_file = nb_file.decode()
-            
+            print(nb_file)
             # S'il y a au moins un fichier 
             if nb_file != "0":
                 
                 # Message console
                 if console.winfo_exists():
-                    console.insert("end","il y a ",nb_file.decode()," fichier(s) en attente(s)...\n","orange")
+                    console.insert("end","il y a ",nb_file," fichier(s) en attente(s)...\n","orange")
             
             # S'il n'y a pas de fichier        
             if nb_file == "0":
@@ -1357,7 +1371,7 @@ def sendFile(file,ip):
                         print("Donné à envoyé : ",donnees)   
                         
                         # Envoi du fichier par paquet de 1024 octets
-                        send_data(vpn_client,donnees,key_partaged)
+                        send_data(vpn_client,donnees.decode('utf-8', errors='ignore').encode('utf-8'),key_partaged)
                         
                         # Reception du signal pour continuer
                         recv_message(vpn_client,key_partaged)
@@ -1476,7 +1490,7 @@ def ReceptionFile(key_partaged):
         recu = recv_message(vpn_client,key_partaged)
         
         # Ajout de la taille des données pour le diagramme
-        add_data_download(cursor,len(recu.encode()),now) 
+        add_data_download(cursor,len(recu),now) 
         
         # Test la bonne reception du paquet
         if not recu : return False
@@ -1864,7 +1878,51 @@ def verif_Signature(key_partaged):
     except (ValueError, TypeError):
         print("La signature est invalide.")
         return False
-    
+
+#?##########################################################################################################################################
+#?--------------------------------------------------------CRÉATION DE LA BASE DE DONNÉES---------------------------------------------------#
+#?##########################################################################################################################################
+date = 0
+now = datetime.now()
+now = now.strftime("%d%m%Y")
+print(now)
+conn = sqlite3.connect("ma_base_de_donnees.db")
+cursor = conn.cursor()
+
+# Je créée la base de donnée si elle n'existe pas 
+# Si elle est vide => signifie que c'est la première connexion du client
+cursor.execute("CREATE TABLE IF NOT EXISTS trafic (date INTEGER PRIMARY KEY, som_up INTEGER,som_down INTEGER)")
+
+cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            source TEXT NOT NULL,
+                                                            subject TEXT NOT NULL,
+                                                            text TEXT NOT NULL, 
+                                                            open boolean)""")
+
+cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KEY, ad_mail TEXT NOT NULL)")
+
+# Récupère la nombre d'éléments (jours avec des données) dans le trafic réseau
+cursor.execute("SELECT COUNT(*) FROM trafic")
+result = cursor.fetchone()
+
+if result[0] == 0:
+    # La table utilisateurs est vide. C'est la première connexion de l'utilisateur
+    # Insert une nouvelle ligne 
+    cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
+    conn.commit()
+else:
+    # La table utilisateurs n'est pas vide
+    # Recupère le nombre d'éléments enregistré dans la table avec la date actuel
+    cursor.execute("SELECT COUNT(*) FROM trafic WHERE date=?",(now,))
+    result = cursor.fetchone()
+    print(result[0])
+    # Je vérifie si le client s'est déjà connecté aujourd'hui ou pas
+    if result[0] <= 0:
+        # Le client ne s'est pas connecté aujourd'hui
+        # Insert une nouvelle ligne
+        cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
+        conn.commit()
+
 #?##########################################################################################################################################
 #?---------------------------------------------------------CRÉATION DE L'INTERFACE---------------------------------------------------------#
 #?##########################################################################################################################################
@@ -1922,9 +1980,20 @@ trait6 = canvas.create_line(0, 0, 0, 0,width=2)
 #* Bloc USER
 tete_user = canvas.create_oval(0, 0, 0, 0,fill="#a4c2f4",width=2)
 txt_user = canvas.create_text(0, 0, text="USER", font="Robot 13 bold", fill="white")
-txt_pseudo = canvas.create_text(0, 0, text="Pseudo :", font="Robot 10 bold", fill="white")
-txt_ip = canvas.create_text(0, 0, text="IP :", font="Robot 10 bold", fill="white")
-txt_connexion = canvas.create_text(0, 0, text="Dernière connexion :", font="Robot 10 bold", fill="white")
+txt_pseudo = canvas.create_text(0, 0, text="Pseudo : User_24", font="Robot 10 bold", fill="white")
+# Récupère l'adresse IP de la machine locale
+adresse_ip = socket.gethostbyname(socket.gethostname())
+txtIP = "IP : "+str(adresse_ip)
+txt_ip = canvas.create_text(0, 0, text=txtIP, font="Robot 10 bold", fill="white")
+
+# Exécution de la requête SELECT
+cursor.execute("SELECT * FROM trafic ORDER BY date DESC LIMIT 1;")
+derniere_ligne = cursor.fetchone()
+txtdate="Dernière connexion : \n"+ str(derniere_ligne[0])
+print(txtdate)
+txt_connexion = canvas.create_text(0, 0, text=txtdate, font="Robot 10 bold", fill="white")
+
+
 
 #* Logo VPN
 logo_carré = canvas.create_rectangle(0, 0, 0, 0,fill="#a4c2f4",width=2)
@@ -2104,49 +2173,7 @@ dessin_mail = canvas.create_rectangle(1005,388,1024,412,width=2)
 notif = canvas.create_oval(1016,385,1026,395,fill=None,width=0)
 
 
-#?##########################################################################################################################################
-#?--------------------------------------------------------CRÉATION DE LA BASE DE DONNÉES---------------------------------------------------#
-#?##########################################################################################################################################
-date = 0
-now = datetime.now()
-now = now.strftime("%d%m%Y")
-conn = sqlite3.connect("ma_base_de_donnees.db")
-cursor = conn.cursor()
 
-# Je créée la base de donnée si elle n'existe pas 
-# Si elle est vide => signifie que c'est la première connexion du client
-cursor.execute("CREATE TABLE IF NOT EXISTS trafic (date INTEGER PRIMARY KEY, som_up INTEGER,som_down INTEGER)")
-
-cursor.execute("""CREATE TABLE IF NOT EXISTS email_client (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                            source TEXT NOT NULL,
-                                                            subject TEXT NOT NULL,
-                                                            text TEXT NOT NULL, 
-                                                            open boolean)""")
-
-cursor.execute("CREATE TABLE IF NOT EXISTS contacts (ip TEXT NOT NULL PRIMARY KEY, ad_mail TEXT NOT NULL)")
-
-# Récupère la nombre d'éléments (jours avec des données) dans le trafic réseau
-cursor.execute("SELECT COUNT(*) FROM trafic")
-result = cursor.fetchone()
-
-
-if result[0] == 0:
-    # La table utilisateurs est vide. C'est la première connexion de l'utilisateur
-    # Insert une nouvelle ligne 
-    cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
-    conn.commit()
-else:
-    # La table utilisateurs n'est pas vide
-    # Recupère le nombre d'éléments enregistré dans la table avec la date actuel
-    cursor.execute("SELECT COUNT(*) FROM trafic WHERE date=?",(now,))
-    result = cursor.fetchone()
-
-    # Je vérifie si le client s'est déjà connecté aujourd'hui ou pas
-    if result[0] < 0:
-        # Le client ne s'est pas connecté aujourd'hui
-        # Insert une nouvelle ligne
-        cursor.execute("INSERT INTO trafic (date, som_up, som_down) VALUES (?,?,?)", (now, 0, 0))
-        conn.commit()
 
 #* Histogramme
 bar0 = canvas.create_rectangle(0,0,0,0,fill="#a4c2f4")

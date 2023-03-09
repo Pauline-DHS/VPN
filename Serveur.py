@@ -388,7 +388,7 @@ def sendFile(name_file,file,ip,key_partaged):
                         donnees = fich.read(870)         
                         
                         # Envoie des données
-                        send_data(client_connection,donnees,key_partaged)
+                        send_data(client_connection,donnees.decode('utf-8', errors='ignore').encode('utf-8'),key_partaged)
                         
                         # Reception du signal pour continuer
                         recv_message(client_connection,key_partaged)
@@ -746,8 +746,9 @@ c.execute('''CREATE TABLE IF NOT EXISTS fichiers (id integer,
 
 while(True):
     client_connection, client_address = vpn_server.accept()
+    
     # Vérification des adresses IP
-    if client_address[0] == "77.130.108.126" or client_address[0] == "192.168.1.5" or client_address[0] == "127.0.0.1":
+    if client_address[0] == "77.130.108.126" or client_address[0] == "127.0.0.1":
         client_found = False
         
         #! On va chercher à savoir si le client est connu dans la BDD 
